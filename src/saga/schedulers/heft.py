@@ -7,10 +7,19 @@ from saga.schedulers.cpop import upward_rank
 
 thisdir = pathlib.Path(__file__).resolve().parent
 
+def calculate_task_difficulty(task_graph: TaskGraph, task_name: str) -> float:
+    difficulty = 0.0
+
+    parents = list(task_graph.graph.predecessors(task_name))
+    while parents:
+        parent = parents.pop(0)
+        difficulty += task_graph.get_task(parent).cost
+        parents.extend(task_graph.graph.predecessors(parent))
+    
+    return difficulty
 
 def heft_rank_sort(network: Network, task_graph: TaskGraph) -> List[str]:
     """Sort tasks based on their rank (as defined in the HEFT paper).
-
     Args:
         network (Network): The network graph.
         task_graph (TaskGraph): The task graph.
@@ -30,9 +39,21 @@ def heft_rank_sort(network: Network, task_graph: TaskGraph) -> List[str]:
     # task closer to the finish point is done first
 
 
-    rank = {node: (urank[node], topological_sort[node]) for node in urank} 
-    # rank of a task is how long it takes to get from the starting node to the finishing node 
-    # (includes the time to complete the task itself)
+    # rank = {node: (urank[node], topological_sort[node]) for node in urank} 
+    # # rank of a task is how long it takes to get from the starting node to the finishing node 
+    # # (includes the time to complete the task itself)
+    # Calculate difficulty for each task
+    task_difficulties = {node: calculate_task_difficulty(task_graph, node) for node in urank}
+
+    # Enhanced ranking: (upward_rank, difficulty, topological_position)
+    rank = {
+        node: (
+            urank[node],                           # Primary: upward rank
+            task_difficulties[node],               # Secondary: task difficulty  
+            topological_sort[node]                 # Tertiary: position in chain
+        ) 
+        for node in urank
+    }
 
 
     # ---------- sort nodes in a list by order of urank values ----------
