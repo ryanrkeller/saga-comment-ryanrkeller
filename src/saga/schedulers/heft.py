@@ -18,12 +18,27 @@ def heft_rank_sort(network: Network, task_graph: TaskGraph) -> List[str]:
     Returns:
         List[str]: The sorted list of tasks.
     """
-    urank = upward_rank(network, task_graph)
+    urank = upward_rank(network, task_graph) # Upward rank calculation (HEFT part 1)
+    # urank = average comp time + max(child + comp time)
+        # represents longest path from current task to finish point
+    
     topological_sort = {
         node.name: i for i, node in enumerate(reversed(task_graph.topological_sort()))
-    }
-    rank = {node: (urank[node], topological_sort[node]) for node in urank}
+    } 
+    # makes a dictionary of teach task and its urank, used as 
+    # tiebreaker if 2 tasks have the same urank value,
+    # task closer to the finish point is done first
+
+
+    rank = {node: (urank[node], topological_sort[node]) for node in urank} 
+    # rank of a task is how long it takes to get from the starting node to the finishing node 
+    # (includes the time to complete the task itself)
+
+
+    # ---------- sort nodes in a list by order of urank values ----------
     order = sorted(list(rank.keys()), key=lambda x: rank.get(x, 0.0), reverse=True)
+    # sort by urank value (descending by order of urank values, uses randomness to break ties)
+    
     return order
 
 
@@ -55,35 +70,66 @@ class HeftScheduler(Scheduler):
             ValueError: If the instance is invalid.
         """
         schedule_order = heft_rank_sort(network, task_graph)
+        # sort by decending order of urank values, tiebreak by which task is closer to the finish point
         schedule = Schedule(task_graph, network)
+        # creates an empty schedule that gets filled as tasks get assigned to processors
 
         for task_name in schedule_order:
             if schedule.is_scheduled(task_name):
                 continue
-            min_finish_time = np.inf
-            best_node = next(iter(network.nodes))  # arbitrary initialization
+            min_finish_time = np.inf # initialize min_finish_time to infinity
+            # in the end it keeps track of the minimum finish time
+            best_node = next(iter(network.nodes))  # initialize best_node to a random node
+            # in the end it keeps track of the processor that results in the minimum finish time
+
+# ---------- assign tasks to processors with least computational time respectively ----------
+            
             for node in network.nodes:
+
+                # EST calculation
                 start_time = schedule.get_earliest_start_time(
                     task=task_name, node=node, append_only=False
+                #calculates when task can start based on 
+                # - dependencies
+                # - communication times
+                # - processor availability
                 )
                 start_time = max(start_time, min_start_time)
+                # makes sure that the task doesn't start before min_start_time
+                
+                # Runtime calculation: task cost divided by network speed
                 runtime = (
                     task_graph.get_task(task_name).cost / network.get_node(node).speed
                 )
+                
+                # Finish time calculation: start time + runtime
                 finish_time = start_time + runtime
                 if finish_time < min_finish_time:
                     min_finish_time = finish_time
+                    # if finish time is faster set mintime to this node's runtime
+                    
+                    # best_start_time = start_time
+                
                     best_node = node
+                    # set best node to this node
             new_task = ScheduledTask(
+            # creates final scheduletask object with optimal task assignment
                 node=best_node.name,
+                # processor that gives earliest finish time
                 name=task_name,
+                # current task being scheduled
                 start=min_finish_time
                 - (
                     task_graph.get_task(task_name).cost
                     / network.get_node(best_node).speed
                 ),
+                # start time is finish time minus runtime
+                # this could be saved above in the finish time calculation
                 end=min_finish_time,
+                # end time is finish time
             )
             schedule.add_task(new_task)
+            # adds task to schedule
 
         return schedule
+        # returns final schedule
