@@ -1,5 +1,5 @@
 import pathlib
-from typing import List, Optional
+from typing import List, Optional, Dict
 import numpy as np
 
 from saga import Schedule, Scheduler, ScheduledTask, TaskGraph, Network
@@ -18,6 +18,30 @@ def calculate_task_difficulty(task_graph: TaskGraph, task_name: str) -> float:
     
     return difficulty
 
+def sum_rank(network: Network, task_graph: TaskGraph) -> Dict[str, float]:
+    """Computes sum-based ranks (sum instead of max of children)."""
+    ranks: Dict[str, float] = {}
+    
+    topological_order = task_graph.topological_sort()
+    for task in topological_order[::-1]:  # Reverse order (exit to entry)
+        current_task = task_graph.get_task(task.name)
+        avg_comp_time = np.mean([current_task.cost / node.speed for node in network.nodes])
+        
+        # Sum of children ranks instead of max
+        sum_comm_time = 0.0
+        if task_graph.out_degree(task.name) > 0:
+            avg_edge_speed = np.mean([edge.speed for edge in network.edges])  # Calculate once
+            for child_edge in task_graph.out_edges(task.name):
+                child_name = child_edge.target
+                if child_name in ranks:
+                    comm_time = child_edge.size / avg_edge_speed if avg_edge_speed > 0 else 0
+                    sum_comm_time += ranks[child_name] + comm_time
+        
+        ranks[task.name] = float(avg_comp_time + sum_comm_time)
+    
+    return ranks
+
+
 def heft_rank_sort(network: Network, task_graph: TaskGraph) -> List[str]:
     """Sort tasks based on their rank (as defined in the HEFT paper).
     Args:
@@ -29,7 +53,11 @@ def heft_rank_sort(network: Network, task_graph: TaskGraph) -> List[str]:
     """
     urank = upward_rank(network, task_graph) # Upward rank calculation (HEFT part 1)
     # urank = average comp time + max(child + comp time)
-        # represents longest path from current task to finish point
+        # represents longest path from current task to finish point\\
+        # maybe replace max with sum so you can prioritize tasks that have more children
+        # take weight of the children as a chance to do that task next so like a task with weight 8 has 
+        # an 80% chance of being done next and is more likely to be done next than a task with weight 2 
+        # which would have a 20% chance of being done next
     
     topological_sort = {
         node.name: i for i, node in enumerate(reversed(task_graph.topological_sort()))
