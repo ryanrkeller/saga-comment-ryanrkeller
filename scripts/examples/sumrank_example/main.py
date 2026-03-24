@@ -16,8 +16,8 @@ def get_problem_instance() -> Tuple[Network, TaskGraph]:
     network = get_network()
     print("Creating task graph...")
     task_graph = get_branching_dag(
-        levels=random.randint(2, 6),
-        branching_factor=random.randint(2, 6)
+        levels=random.randint(5, 8),
+        branching_factor=random.randint(3, 5)
     )
     print("Problem instance created!")
     return network, task_graph
@@ -135,7 +135,7 @@ def main():
     print("Starting sum_rank vs upward_rank comparison...")
     
     # Run comparison
-    results = run_comparison(num_trials=25, use_sum_rank=True)
+    results = run_comparison(num_trials=50, use_sum_rank=True)
     
     # Save results
     save_results(results)
