@@ -6,6 +6,10 @@ import random
 import csv
 from typing import Dict, List, Tuple
 import time
+import pandas as pd
+from itertools import product
+from tqdm import tqdm
+from pathlib import Path
 
 from saga.utils.random_graphs import get_branching_dag, get_network
 from saga import Network, TaskGraph, Schedule
@@ -16,8 +20,8 @@ def get_problem_instance() -> Tuple[Network, TaskGraph]:
     network = get_network()
     print("Creating task graph...")
     task_graph = get_branching_dag(
-        levels=random.randint(5, 8),
-        branching_factor=random.randint(3, 5)
+        levels=random.randint(2, 3),
+        branching_factor=random.randint(2, 3)
     )
     print("Problem instance created!")
     return network, task_graph
@@ -47,7 +51,6 @@ def run_comparison(num_trials: int = 1000, use_sum_rank: bool = True) -> List[Di
             
             print(f"Trial {i+1}: Creating scheduler...")
             scheduler_sum = HeftScheduler()
-            print(f"Trial {i+1}: Scheduling with sum_rank...")
             schedule_sum = scheduler_sum.schedule(network, task_graph)
             sum_makespan = schedule_sum.makespan
             print(f"Trial {i+1}: Sum makespan: {sum_makespan}")
@@ -74,20 +77,80 @@ def run_comparison(num_trials: int = 1000, use_sum_rank: bool = True) -> List[Di
     return results
 
 def save_results(results: List[Dict], filename: str = "sumrank_comparison.csv"):
-    """Save results to CSV file."""
+    """Save results to CSV file with better organization and readability."""
     if not results:
         return
     
     os.makedirs("outputs", exist_ok=True)
     filepath = os.path.join("outputs", filename)
     
+    # Enhanced headers for better organization
+    fieldnames = [
+        'trial',
+        'graph_size_tasks', 
+        'graph_size_edges',
+        'task_edge_ratio',
+        'upward_rank_makespan',
+        'sum_rank_makespan',
+        'performance_difference',
+        'performance_improvement_percent',
+        'better_algorithm'
+    ]
+    
+    # Transform results for better organization
+    organized_results = []
+    for r in results:
+        if r['sum_makespan'] is not None:
+            improvement = r['improvement']
+            better = 'sum_rank' if improvement > 0 else 'upward_rank' if improvement < 0 else 'equal'
+        else:
+            improvement = None
+            better = 'upward_rank'
+            
+        organized_results.append({
+            'trial': r['trial'],
+            'graph_size_tasks': r['num_tasks'],
+            'graph_size_edges': r['num_edges'],
+            'task_edge_ratio': round(r['num_tasks'] / r['num_edges'], 3) if r['num_edges'] > 0 else 0,
+            'upward_rank_makespan': round(r['upward_makespan'], 6),
+            'sum_rank_makespan': round(r['sum_makespan'], 6) if r['sum_makespan'] else None,
+            'performance_difference': round(r['sum_makespan'] - r['upward_makespan'], 6) if r['sum_makespan'] else None,
+            'performance_improvement_percent': round(improvement, 2) if improvement is not None else None,
+            'better_algorithm': better
+        })
+    
+    # Create a more readable format with labels
+    readable_filepath = os.path.join("outputs", filename.replace('.csv', '_readable.csv'))
+    
+    with open(readable_filepath, 'w', newline='') as csvfile:
+        csvfile.write("# HEFT Scheduler Comparison Results\n")
+        csvfile.write("# Format: trial | graph_info | upward_rank | sum_rank | performance\n")
+        csvfile.write("# " + "="*80 + "\n\n")
+        
+        for r in organized_results:
+            csvfile.write(f"=== Trial {r['trial']} ===\n")
+            csvfile.write(f"Graph Info: Tasks: {r['graph_size_tasks']:2d}, Edges: {r['graph_size_edges']:2d}, Ratio: {r['task_edge_ratio']:.2f}\n")
+            csvfile.write(f"Upward Rank: {r['upward_rank_makespan']:8.6f}\n")
+            if r['sum_rank_makespan']:
+                csvfile.write(f"Sum Rank:    {r['sum_rank_makespan']:8.6f}\n")
+                diff_str = f"{r['performance_difference']:+.6f}"
+                csvfile.write(f"Difference:   {diff_str} ({r['performance_improvement_percent']:+.1f}%)\n")
+                csvfile.write(f"Winner:       {r['better_algorithm']}\n")
+            else:
+                csvfile.write("Sum Rank:    N/A\n")
+                csvfile.write("Difference:   N/A\n")
+                csvfile.write("Winner:       upward_rank\n")
+            csvfile.write("\n")
+    
+    # Also save the standard CSV for data analysis
     with open(filepath, 'w', newline='') as csvfile:
-        fieldnames = results[0].keys()
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(results)
+        writer.writerows(organized_results)
     
     print(f"Results saved to {filepath}")
+    print(f"Readable format saved to {readable_filepath}")
+    print(f"Enhanced CSV with {len(organized_results)} trials and detailed metrics")
 
 def analyze_results(results: List[Dict]):
     """Print analysis of results."""
@@ -131,11 +194,67 @@ def analyze_results(results: List[Dict]):
             print(f"Average edges: {avg_edges_worse:.1f}")
             print(f"Task/Edge ratio: {avg_tasks_worse/avg_edges_worse:.2f}")
 
+def run_experiment():
+    num_instances = 20
+    ccr_values = [1/10, 5, 10]
+    duplicate_factors = [1, 2, 3]
+    all_num_nodes = [4, 8]
+    all_levels = [2, 3]
+    all_branching_factors = [2, 3]
+
+    schedulers = {
+        "HEFT_Original": lambda dup: HeftScheduler(),
+        "HEFT_SumRank": lambda dup: HeftScheduler()  # We'll modify this to use sum_rank
+    }
+
+    # Calculate total iterations for progress bar
+    total_iterations = (
+        num_instances *
+        len(ccr_values) *
+        len(list(product(all_num_nodes, all_levels, all_branching_factors))) *
+        len(duplicate_factors) *
+        len(schedulers)
+    )
+
+    rows = []
+    with tqdm(total=total_iterations, desc="Running experiments") as pbar:
+        for i in range(num_instances):
+            for ccr in ccr_values:
+                for num_nodes, levels, branching_factor in product(all_num_nodes, all_levels, all_branching_factors):
+                    network, task_graph = get_branching_dag(
+                        levels=levels,
+                        branching_factor=branching_factor
+                    )
+                    
+                    for dup_factor in duplicate_factors:
+                        for scheduler_name, scheduler_func in schedulers.items():
+                            if "SumRank" in scheduler_name:
+                                # Temporarily replace upward_rank with sum_rank
+                                original_upward_rank = HeftScheduler.schedule.__globals__['upward_rank']
+                                HeftScheduler.schedule.__globals__['upward_rank'] = sum_rank
+                                scheduler = scheduler_func(dup_factor)
+                                test_schedule = scheduler.schedule(network, task_graph)
+                                # Restore original
+                                HeftScheduler.schedule.__globals__['upward_rank'] = original_upward_rank
+                            else:
+                                scheduler = scheduler_func(dup_factor)
+                                test_schedule = scheduler.schedule(network, task_graph)
+                            
+                            makespan = test_schedule.makespan
+                            rows.append([i, ccr, num_nodes, levels, branching_factor, scheduler_name, dup_factor, makespan])
+                            pbar.update(1)
+
+    df = pd.DataFrame(rows, columns=["Instance", "CCR", "Num Nodes", "Levels", "Branching Factor", "Scheduler", "Dup Factor", "Makespan"])
+    os.makedirs("outputs", exist_ok=True)
+    df.to_csv("outputs/experiment_results.csv", index=False)
+    print(f"Results saved to outputs/experiment_results.csv")
+    return df
+
 def main():
     print("Starting sum_rank vs upward_rank comparison...")
     
     # Run comparison
-    results = run_comparison(num_trials=50, use_sum_rank=True)
+    results = run_comparison(num_trials=25, use_sum_rank=True)
     
     # Save results
     save_results(results)
