@@ -1,3 +1,4 @@
+import argparse
 import sys
 import os
 sys.path.insert(0, '/Users/Pokem/Coleman Research/saga-comment-ryanrkeller/saga-comment-ryanrkeller/src')
@@ -11,11 +12,15 @@ from itertools import product
 from tqdm import tqdm
 from pathlib import Path
 import matplotlib.pyplot as plt
+import pathlib
 
 from saga.utils.random_graphs import get_branching_dag, get_network
 from saga import Network, TaskGraph, Schedule
 from saga.schedulers.heft import HeftScheduler, upward_rank, sum_rank
 from saga.utils.draw import draw_gantt, draw_network, draw_task_graph
+
+thisdir = pathlib.Path(__file__).parent
+output_dir = thisdir / "outputs"
 
 def get_problem_instance() -> Tuple[Network, TaskGraph]:
     print("Creating network...")
@@ -83,8 +88,8 @@ def save_results(results: List[Dict], filename: str = "sumrank_comparison.csv"):
     if not results:
         return
     
-    os.makedirs("outputs", exist_ok=True)
-    filepath = os.path.join("outputs", filename)
+    os.makedirs(output_dir, exist_ok=True)
+    filepath = output_dir / filename
     
     # Enhanced headers for better organization
     fieldnames = [
@@ -159,9 +164,9 @@ def analyze_results(results: List[Dict]):
     if not results:
         return
     
-    upward_makespans = [r['upward_makespan'] for r in results]
-    sum_makespans = [r['sum_makespan'] for r in results if r['sum_makespan'] is not None]
-    improvements = [r['improvement'] for r in results if r['improvement'] is not None]
+    upward_makespans = [r['upward_rank_makespan'] for r in results]
+    sum_makespans = [r['sum_rank_makespan'] for r in results if r['sum_rank_makespan'] is not None]
+    improvements = [r['performance_improvement_percent'] for r in results if r['performance_improvement_percent'] is not None]
     
     print(f"\n=== Analysis Results ===")
     print(f"Total trials: {len(results)}")
@@ -175,14 +180,14 @@ def analyze_results(results: List[Dict]):
         print(f"Min improvement: {min(improvements):.2f}%")
 
         # Enhanced analysis: when does sum_rank perform better?
-        better_trials = [r for r in results if r['improvement'] and r['improvement'] > 0]
-        worse_trials = [r for r in results if r['improvement'] and r['improvement'] <= 0]
+        better_trials = [r for r in results if r['performance_improvement_percent'] and r['performance_improvement_percent'] > 0]
+        worse_trials = [r for r in results if r['performance_improvement_percent'] and r['performance_improvement_percent'] <= 0]
         
         if better_trials:
             print(f"\n=== When sum_rank BETTER ===")
             print(f"Number of better trials: {len(better_trials)}")
-            avg_tasks_better = sum(r['num_tasks'] for r in better_trials) / len(better_trials)
-            avg_edges_better = sum(r['num_edges'] for r in better_trials) / len(better_trials)
+            avg_tasks_better = sum(r['graph_size_tasks'] for r in better_trials) / len(better_trials)
+            avg_edges_better = sum(r['graph_size_edges'] for r in better_trials) / len(better_trials)
             print(f"Average tasks: {avg_tasks_better:.1f}")
             print(f"Average edges: {avg_edges_better:.1f}")
             print(f"Task/Edge ratio: {avg_tasks_better/avg_edges_better:.2f}")
@@ -190,24 +195,140 @@ def analyze_results(results: List[Dict]):
         if worse_trials:
             print(f"\n=== When sum_rank WORSE ===")
             print(f"Number of worse trials: {len(worse_trials)}")
-            avg_tasks_worse = sum(r['num_tasks'] for r in worse_trials) / len(worse_trials)
-            avg_edges_worse = sum(r['num_edges'] for r in worse_trials) / len(worse_trials)
+            avg_tasks_worse = sum(r['graph_size_tasks'] for r in worse_trials) / len(worse_trials)
+            avg_edges_worse = sum(r['graph_size_edges'] for r in worse_trials) / len(worse_trials)
             print(f"Average tasks: {avg_tasks_worse:.1f}")
             print(f"Average edges: {avg_edges_worse:.1f}")
             print(f"Task/Edge ratio: {avg_tasks_worse/avg_edges_worse:.2f}")
 
-def visualize_schedules(results: List[Dict], num_examples: int = 3):
-    """Create Gantt chart visualizations of sample schedules using saga's built-in functions."""
+def plot_results(results: List[Dict]):
+    if not results:
+        print("No results to plot!")
+        return
+    
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    # Create figure with subplots - 2x3 layout for more plots
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    fig.suptitle('SumRank vs UpwardRank Performance Analysis', fontsize=16, fontweight='bold')
+    
+    # 1. Performance Difference Distribution
+    differences = [r['performance_improvement_percent'] for r in results if r['performance_improvement_percent'] is not None]
+    axes[0, 0].hist(differences, bins=30, color='skyblue', edgecolor='black', alpha=0.7)
+    axes[0, 0].axvline(0, color='red', linestyle='--', linewidth=2, label='No difference')
+    axes[0, 0].set_xlabel('Performance Difference (%)')
+    axes[0, 0].set_ylabel('Frequency')
+    axes[0, 0].set_title('Distribution of Performance Differences')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+    
+    # 2. Task/Edge Ratio vs Performance
+    task_edge_ratios = [r['task_edge_ratio'] for r in results if r['performance_improvement_percent'] is not None]
+    performance_diffs = [r['performance_improvement_percent'] for r in results if r['performance_improvement_percent'] is not None]
+    
+    scatter = axes[0, 1].scatter(task_edge_ratios, performance_diffs, alpha=0.6, c=performance_diffs, cmap='RdYlGn', s=50)
+    axes[0, 1].axhline(0, color='red', linestyle='--', linewidth=2)
+    axes[0, 1].set_xlabel('Task/Edge Ratio')
+    axes[0, 1].set_ylabel('Performance Difference (%)')
+    axes[0, 1].set_title('Task/Edge Ratio vs Performance')
+    axes[0, 1].grid(True, alpha=0.3)
+    
+    # Add colorbar
+    cbar = plt.colorbar(scatter, ax=axes[0, 1])
+    cbar.set_label('Performance Difference (%)')
+    
+    # 3. Better vs Worse Trials
+    better_count = len([r for r in results if r['performance_improvement_percent'] and r['performance_improvement_percent'] > 0])
+    worse_count = len([r for r in results if r['performance_improvement_percent'] and r['performance_improvement_percent'] < 0])
+    equal_count = len([r for r in results if r['performance_improvement_percent'] and r['performance_improvement_percent'] == 0])
+    
+    labels = ['Better (sum_rank)', 'Worse (sum_rank)', 'Equal']
+    sizes = [better_count, worse_count, equal_count]
+    colors = ['#2E8B57', '#CD5C5C', '#808080']
+    
+    axes[0, 2].pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+    axes[0, 2].set_title('Performance Comparison Distribution')
+    
+    # 4. Average Performance by Task/Edge Ratio
+    task_edge_bins = {}
+    for r in results:
+        ratio = round(r['task_edge_ratio'], 1)
+        if ratio not in task_edge_bins:
+            task_edge_bins[ratio] = {'sum': [], 'upward': []}
+        task_edge_bins[ratio]['sum'].append(r['sum_rank_makespan'])
+        task_edge_bins[ratio]['upward'].append(r['upward_rank_makespan'])
+    
+    ratios = sorted(task_edge_bins.keys())
+    avg_sum = [np.mean(task_edge_bins[r]['sum']) for r in ratios]
+    avg_upward = [np.mean(task_edge_bins[r]['upward']) for r in ratios]
+    
+    axes[1, 0].plot(ratios, avg_sum, 'o-', label='SumRank', linewidth=2, markersize=6)
+    axes[1, 0].plot(ratios, avg_upward, 's-', label='UpwardRank', linewidth=2, markersize=6)
+    axes[1, 0].set_xlabel('Task/Edge Ratio')
+    axes[1, 0].set_ylabel('Average Makespan')
+    axes[1, 0].set_title('Average Makespan by Task/Edge Ratio')
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+    
+    # 5. NEW: Makespan by Number of Tasks (Nodes)
+    task_bins = {}
+    for r in results:
+        tasks = r['graph_size_tasks']
+        if tasks not in task_bins:
+            task_bins[tasks] = {'sum': [], 'upward': []}
+        task_bins[tasks]['sum'].append(r['sum_rank_makespan'])
+        task_bins[tasks]['upward'].append(r['upward_rank_makespan'])
+    
+    task_counts = sorted(task_bins.keys())
+    avg_sum_tasks = [np.mean(task_bins[t]['sum']) for t in task_counts]
+    avg_upward_tasks = [np.mean(task_bins[t]['upward']) for t in task_counts]
+    
+    axes[1, 1].plot(task_counts, avg_sum_tasks, 'o-', label='SumRank', linewidth=2, markersize=6)
+    axes[1, 1].plot(task_counts, avg_upward_tasks, 's-', label='UpwardRank', linewidth=2, markersize=6)
+    axes[1, 1].set_xlabel('Number of Tasks (Nodes)')
+    axes[1, 1].set_ylabel('Average Makespan')
+    axes[1, 1].set_title('Average Makespan by Number of Tasks')
+    axes[1, 1].legend()
+    axes[1, 1].grid(True, alpha=0.3)
+    
+    # 6. NEW: Makespan by Number of Edges (proxy for branching factor)
+    edge_bins = {}
+    for r in results:
+        edges = r['graph_size_edges']
+        if edges not in edge_bins:
+            edge_bins[edges] = {'sum': [], 'upward': []}
+        edge_bins[edges]['sum'].append(r['sum_rank_makespan'])
+        edge_bins[edges]['upward'].append(r['upward_rank_makespan'])
+    
+    edge_counts = sorted(edge_bins.keys())
+    avg_sum_edges = [np.mean(edge_bins[e]['sum']) for e in edge_counts]
+    avg_upward_edges = [np.mean(edge_bins[e]['upward']) for e in edge_counts]
+    
+    axes[1, 2].plot(edge_counts, avg_sum_edges, 'o-', label='SumRank', linewidth=2, markersize=6)
+    axes[1, 2].plot(edge_counts, avg_upward_edges, 's-', label='UpwardRank', linewidth=2, markersize=6)
+    axes[1, 2].set_xlabel('Number of Edges (Branching Complexity)')
+    axes[1, 2].set_ylabel('Average Makespan')
+    axes[1, 2].set_title('Average Makespan by Number of Edges')
+    axes[1, 2].legend()
+    axes[1, 2].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / 'sumrank_analysis.png', dpi=300, bbox_inches='tight')
+    print(f"Saved analysis plot to {output_dir / 'sumrank_analysis.png'}")
+    plt.close()
+
+
+
+def visualize_schedules(results: List[Dict], num_examples: int = 5):
     if not results:
         print("No results to visualize!")
         return
     
-    print(f"\n=== Creating Gantt Chart Visualizations ===")
-    # Use the same outputs directory as basic_example
+    print(f"\n=== Creating Chart Visualizations ===")
     savedir = Path(__file__).parent / 'outputs'
     savedir.mkdir(exist_ok=True)
     
-    # Find interesting examples
     better_examples = [r for r in results if r['improvement'] and r['improvement'] > 0][:num_examples]
     worse_examples = [r for r in results if r['improvement'] and r['improvement'] < 0][:num_examples]
     
@@ -215,9 +336,8 @@ def visualize_schedules(results: List[Dict], num_examples: int = 3):
         print("No significant performance differences found for visualization")
         return
     
-    # Visualize examples where sum_rank performs better
     for i, result in enumerate(better_examples):
-        print(f"Creating Gantt charts for better example {i+1} (improvement: {result['improvement']:.1f}%)")
+        print(f"Creating charts for better example {i+1} (improvement: {result['improvement']:.1f}%)")
         
         # Generate the same problem instance
         network, task_graph = get_problem_instance()
@@ -233,22 +353,23 @@ def visualize_schedules(results: List[Dict], num_examples: int = 3):
         schedule_sum = scheduler_sum.schedule(network, task_graph)
         HeftScheduler.schedule.__globals__['upward_rank'] = original_upward_rank
         
-        # Draw Gantt charts only
+        # Draw Gantt charts only with trial number
+        trial_num = result['trial']
         ax = draw_gantt(schedule_upward.mapping, use_latex=False)
         fig = ax.get_figure()
         if fig:
-            fig.savefig(str(savedir / f'better_example_{i+1}_upward_gantt.png'))
+            fig.savefig(str(savedir / f'trial_{trial_num}_better_example_{i+1}_upward_chart.png'))
             plt.close(fig)
         
         ax = draw_gantt(schedule_sum.mapping, use_latex=False)
         fig = ax.get_figure()
         if fig:
-            fig.savefig(str(savedir / f'better_example_{i+1}_sum_gantt.png'))
+            fig.savefig(str(savedir / f'trial_{trial_num}_better_example_{i+1}_sum_chart.png'))
             plt.close(fig)
     
     # Visualize examples where sum_rank performs worse
     for i, result in enumerate(worse_examples):
-        print(f"Creating Gantt charts for worse example {i+1} (improvement: {result['improvement']:.1f}%)")
+        print(f"Creating charts for worse example {i+1} (improvement: {result['improvement']:.1f}%)")
         
         # Generate the same problem instance
         network, task_graph = get_problem_instance()
@@ -264,20 +385,21 @@ def visualize_schedules(results: List[Dict], num_examples: int = 3):
         schedule_sum = scheduler_sum.schedule(network, task_graph)
         HeftScheduler.schedule.__globals__['upward_rank'] = original_upward_rank
         
-        # Draw Gantt charts only
+        # Draw Gantt charts only with trial number
+        trial_num = result['trial']
         ax = draw_gantt(schedule_upward.mapping, use_latex=False)
         fig = ax.get_figure()
         if fig:
-            fig.savefig(str(savedir / f'worse_example_{i+1}_upward_gantt.png'))
+            fig.savefig(str(savedir / f'trial_{trial_num}_worse_example_{i+1}_upward_chart.png'))
             plt.close(fig)
         
         ax = draw_gantt(schedule_sum.mapping, use_latex=False)
         fig = ax.get_figure()
         if fig:
-            fig.savefig(str(savedir / f'worse_example_{i+1}_sum_gantt.png'))
+            fig.savefig(str(savedir / f'trial_{trial_num}_worse_example_{i+1}_sum_chart.png'))
             plt.close(fig)
     
-    print(f"Gantt charts saved to {savedir} directory")
+    print(f"- Charts saved to {savedir} directory")
     print(f"- Compare upward vs sum_rank scheduling decisions")
     print(f"- See task ordering and processor assignment differences")
 
@@ -337,25 +459,38 @@ def run_experiment():
     print(f"Results saved to outputs/experiment_results.csv")
     return df
 
+
 def main():
     print("Starting sum_rank vs upward_rank comparison...")
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--command", type=str, default="run", choices=["run", "analyze", "visualize_schedules"])
+    args = parser.parse_args()
     
+    results = None
+
     # Run comparison
-    results = run_comparison(num_trials=25, use_sum_rank=True)
-    
-    # Save results
-    save_results(results)
+    if args.command == "run":
+        results = run_comparison(num_trials=50, use_sum_rank=True)
+        
+        # Save results
+        save_results(results)
     
     # Analyze results
-    analyze_results(results)
+    if args.command == "analyze":
+        results = pd.read_csv(output_dir / "sumrank_comparison.csv")
+        results_dict = results.to_dict('records')
+        analyze_results(results_dict)
+        plot_results(results_dict)
     
-    # Create Gantt chart visualizations
-    print("\nCreating Gantt chart visualizations...")
-    visualize_schedules(results, num_examples=2)
+    # Create chart visualizations
+    if args.command == "visualize_schedules":
+        results = pd.read_csv(output_dir / "sumrank_comparison.csv")
+        results_dict = results.to_dict('records')
+        print("\nCreating chart visualizations...")
+        visualize_schedules(results_dict, num_examples=2)
     
-    print("\nDone! Check outputs/ directory for all results and visualizations.")
-    print("- CSV files: sumrank_comparison.csv, sumrank_comparison_readable.csv")
-    print("- Gantt charts: Compare upward vs sum_rank scheduling decisions")
+    print("\nDone!")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,354 @@
+# HEFT Scheduler Comparison Results
+# Format: trial | graph_info | upward_rank | sum_rank | performance
+# ================================================================================
+
+=== Trial 0 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.278516
+Sum Rank:    3.278516
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 1 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.727999
+Sum Rank:    3.727999
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 2 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 3.732673
+Sum Rank:    3.668711
+Difference:   -0.063962 (+1.7%)
+Winner:       sum_rank
+
+=== Trial 3 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 3.001927
+Sum Rank:    3.111907
+Difference:   +0.109980 (-3.7%)
+Winner:       upward_rank
+
+=== Trial 4 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 8.609695
+Sum Rank:    9.256866
+Difference:   +0.647172 (-7.5%)
+Winner:       upward_rank
+
+=== Trial 5 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 6.083099
+Sum Rank:    6.083099
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 6 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 5.436240
+Sum Rank:    5.492506
+Difference:   +0.056266 (-1.0%)
+Winner:       upward_rank
+
+=== Trial 7 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 4.874883
+Sum Rank:    5.568418
+Difference:   +0.693535 (-14.2%)
+Winner:       upward_rank
+
+=== Trial 8 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 6.246060
+Sum Rank:    6.051532
+Difference:   -0.194528 (+3.1%)
+Winner:       sum_rank
+
+=== Trial 9 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 9.040903
+Sum Rank:    9.222704
+Difference:   +0.181802 (-2.0%)
+Winner:       upward_rank
+
+=== Trial 10 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.398729
+Sum Rank:    3.618983
+Difference:   +0.220254 (-6.5%)
+Winner:       upward_rank
+
+=== Trial 11 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.329455
+Sum Rank:    3.180936
+Difference:   -0.148519 (+4.5%)
+Winner:       sum_rank
+
+=== Trial 12 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 1.506203
+Sum Rank:    1.506203
+Difference:   +0.000000 (-0.0%)
+Winner:       upward_rank
+
+=== Trial 13 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 7.309625
+Sum Rank:    7.260272
+Difference:   -0.049354 (+0.7%)
+Winner:       sum_rank
+
+=== Trial 14 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 4.445806
+Sum Rank:    4.674504
+Difference:   +0.228697 (-5.1%)
+Winner:       upward_rank
+
+=== Trial 15 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 6.197558
+Sum Rank:    5.985543
+Difference:   -0.212016 (+3.4%)
+Winner:       sum_rank
+
+=== Trial 16 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 3.347925
+Sum Rank:    3.347925
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 17 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 4.323069
+Sum Rank:    4.323069
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 18 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 4.683123
+Sum Rank:    5.787729
+Difference:   +1.104606 (-23.6%)
+Winner:       upward_rank
+
+=== Trial 19 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.004369
+Sum Rank:    3.004369
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 20 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 4.440472
+Sum Rank:    5.012275
+Difference:   +0.571803 (-12.9%)
+Winner:       upward_rank
+
+=== Trial 21 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.634920
+Sum Rank:    3.634920
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 22 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 7.145622
+Sum Rank:    7.145622
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 23 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 5.044307
+Sum Rank:    5.044307
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 24 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 2.100844
+Sum Rank:    2.100844
+Difference:   +0.000000 (-0.0%)
+Winner:       upward_rank
+
+=== Trial 25 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.203325
+Sum Rank:    3.246176
+Difference:   +0.042851 (-1.3%)
+Winner:       upward_rank
+
+=== Trial 26 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.078482
+Sum Rank:    3.078482
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 27 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 6.373554
+Sum Rank:    6.373554
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 28 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.531781
+Sum Rank:    3.531781
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 29 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 7.285303
+Sum Rank:    7.285303
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 30 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 2.598117
+Sum Rank:    2.598117
+Difference:   +0.000000 (-0.0%)
+Winner:       upward_rank
+
+=== Trial 31 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 5.993159
+Sum Rank:    6.490388
+Difference:   +0.497229 (-8.3%)
+Winner:       upward_rank
+
+=== Trial 32 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 2.627103
+Sum Rank:    2.627103
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 33 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 3.897033
+Sum Rank:    3.999059
+Difference:   +0.102027 (-2.6%)
+Winner:       upward_rank
+
+=== Trial 34 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.216842
+Sum Rank:    3.216842
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 35 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 5.963136
+Sum Rank:    6.114234
+Difference:   +0.151099 (-2.5%)
+Winner:       upward_rank
+
+=== Trial 36 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.229576
+Sum Rank:    3.229576
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 37 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 3.415542
+Sum Rank:    3.415542
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 38 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 7.947759
+Sum Rank:    6.541711
+Difference:   -1.406047 (+17.7%)
+Winner:       sum_rank
+
+=== Trial 39 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 4.819978
+Sum Rank:    4.819978
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 40 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 2.682583
+Sum Rank:    2.682583
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 41 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 9.437658
+Sum Rank:    9.695678
+Difference:   +0.258020 (-2.7%)
+Winner:       upward_rank
+
+=== Trial 42 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 4.480158
+Sum Rank:    4.185193
+Difference:   -0.294965 (+6.6%)
+Winner:       sum_rank
+
+=== Trial 43 ===
+Graph Info: Tasks: 14, Edges: 21, Ratio: 0.67
+Upward Rank: 7.442821
+Sum Rank:    7.442821
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 44 ===
+Graph Info: Tasks:  5, Edges:  6, Ratio: 0.83
+Upward Rank: 2.676204
+Sum Rank:    2.676204
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 45 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 3.770072
+Sum Rank:    3.770072
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 46 ===
+Graph Info: Tasks:  8, Edges: 10, Ratio: 0.80
+Upward Rank: 3.878041
+Sum Rank:    3.878041
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 47 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 2.148093
+Sum Rank:    2.148093
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 48 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 2.298361
+Sum Rank:    2.298361
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
+=== Trial 49 ===
+Graph Info: Tasks:  4, Edges:  4, Ratio: 1.00
+Upward Rank: 3.874967
+Sum Rank:    3.874967
+Difference:   +0.000000 (+0.0%)
+Winner:       equal
+
