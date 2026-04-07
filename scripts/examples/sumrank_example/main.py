@@ -10,10 +10,12 @@ import pandas as pd
 from itertools import product
 from tqdm import tqdm
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 from saga.utils.random_graphs import get_branching_dag, get_network
 from saga import Network, TaskGraph, Schedule
 from saga.schedulers.heft import HeftScheduler, upward_rank, sum_rank
+from saga.utils.draw import draw_gantt, draw_network, draw_task_graph
 
 def get_problem_instance() -> Tuple[Network, TaskGraph]:
     print("Creating network...")
@@ -194,6 +196,91 @@ def analyze_results(results: List[Dict]):
             print(f"Average edges: {avg_edges_worse:.1f}")
             print(f"Task/Edge ratio: {avg_tasks_worse/avg_edges_worse:.2f}")
 
+def visualize_schedules(results: List[Dict], num_examples: int = 3):
+    """Create Gantt chart visualizations of sample schedules using saga's built-in functions."""
+    if not results:
+        print("No results to visualize!")
+        return
+    
+    print(f"\n=== Creating Gantt Chart Visualizations ===")
+    # Use the same outputs directory as basic_example
+    savedir = Path(__file__).parent / 'outputs'
+    savedir.mkdir(exist_ok=True)
+    
+    # Find interesting examples
+    better_examples = [r for r in results if r['improvement'] and r['improvement'] > 0][:num_examples]
+    worse_examples = [r for r in results if r['improvement'] and r['improvement'] < 0][:num_examples]
+    
+    if not better_examples and not worse_examples:
+        print("No significant performance differences found for visualization")
+        return
+    
+    # Visualize examples where sum_rank performs better
+    for i, result in enumerate(better_examples):
+        print(f"Creating Gantt charts for better example {i+1} (improvement: {result['improvement']:.1f}%)")
+        
+        # Generate the same problem instance
+        network, task_graph = get_problem_instance()
+        
+        # Create schedules
+        scheduler_upward = HeftScheduler()
+        schedule_upward = scheduler_upward.schedule(network, task_graph)
+        
+        # Temporarily replace upward_rank with sum_rank
+        original_upward_rank = HeftScheduler.schedule.__globals__['upward_rank']
+        HeftScheduler.schedule.__globals__['upward_rank'] = sum_rank
+        scheduler_sum = HeftScheduler()
+        schedule_sum = scheduler_sum.schedule(network, task_graph)
+        HeftScheduler.schedule.__globals__['upward_rank'] = original_upward_rank
+        
+        # Draw Gantt charts only
+        ax = draw_gantt(schedule_upward.mapping, use_latex=False)
+        fig = ax.get_figure()
+        if fig:
+            fig.savefig(str(savedir / f'better_example_{i+1}_upward_gantt.png'))
+            plt.close(fig)
+        
+        ax = draw_gantt(schedule_sum.mapping, use_latex=False)
+        fig = ax.get_figure()
+        if fig:
+            fig.savefig(str(savedir / f'better_example_{i+1}_sum_gantt.png'))
+            plt.close(fig)
+    
+    # Visualize examples where sum_rank performs worse
+    for i, result in enumerate(worse_examples):
+        print(f"Creating Gantt charts for worse example {i+1} (improvement: {result['improvement']:.1f}%)")
+        
+        # Generate the same problem instance
+        network, task_graph = get_problem_instance()
+        
+        # Create schedules
+        scheduler_upward = HeftScheduler()
+        schedule_upward = scheduler_upward.schedule(network, task_graph)
+        
+        # Temporarily replace upward_rank with sum_rank
+        original_upward_rank = HeftScheduler.schedule.__globals__['upward_rank']
+        HeftScheduler.schedule.__globals__['upward_rank'] = sum_rank
+        scheduler_sum = HeftScheduler()
+        schedule_sum = scheduler_sum.schedule(network, task_graph)
+        HeftScheduler.schedule.__globals__['upward_rank'] = original_upward_rank
+        
+        # Draw Gantt charts only
+        ax = draw_gantt(schedule_upward.mapping, use_latex=False)
+        fig = ax.get_figure()
+        if fig:
+            fig.savefig(str(savedir / f'worse_example_{i+1}_upward_gantt.png'))
+            plt.close(fig)
+        
+        ax = draw_gantt(schedule_sum.mapping, use_latex=False)
+        fig = ax.get_figure()
+        if fig:
+            fig.savefig(str(savedir / f'worse_example_{i+1}_sum_gantt.png'))
+            plt.close(fig)
+    
+    print(f"Gantt charts saved to {savedir} directory")
+    print(f"- Compare upward vs sum_rank scheduling decisions")
+    print(f"- See task ordering and processor assignment differences")
+
 def run_experiment():
     num_instances = 20
     ccr_values = [1/10, 5, 10]
@@ -262,7 +349,13 @@ def main():
     # Analyze results
     analyze_results(results)
     
-    print("\nDone! Check outputs/sumrank_comparison.csv for detailed results.")
+    # Create Gantt chart visualizations
+    print("\nCreating Gantt chart visualizations...")
+    visualize_schedules(results, num_examples=2)
+    
+    print("\nDone! Check outputs/ directory for all results and visualizations.")
+    print("- CSV files: sumrank_comparison.csv, sumrank_comparison_readable.csv")
+    print("- Gantt charts: Compare upward vs sum_rank scheduling decisions")
 
 if __name__ == "__main__":
     main()
