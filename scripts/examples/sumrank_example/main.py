@@ -16,7 +16,7 @@ import pathlib
 
 from saga.utils.random_graphs import get_branching_dag, get_network
 from saga import Network, TaskGraph, Schedule
-from saga.schedulers.heft import HeftScheduler, upward_rank, sum_rank
+from saga.schedulers.heft import HeftScheduler, upward_rank, sum_rank, hybrid_rank
 from saga.utils.draw import draw_gantt, draw_network, draw_task_graph
 
 thisdir = pathlib.Path(__file__).parent
@@ -271,47 +271,109 @@ def plot_results(results: List[Dict]):
     axes[1, 0].legend()
     axes[1, 0].grid(True, alpha=0.3)
     
-    # 5. NEW: Makespan by Number of Tasks (Nodes)
+    # 5. NEW: Makespan by Number of Tasks (Nodes) - Enhanced with better/worse indicators
     task_bins = {}
     for r in results:
         tasks = r['graph_size_tasks']
         if tasks not in task_bins:
-            task_bins[tasks] = {'sum': [], 'upward': []}
+            task_bins[tasks] = {'sum': [], 'upward': [], 'improvements': []}
         task_bins[tasks]['sum'].append(r['sum_rank_makespan'])
         task_bins[tasks]['upward'].append(r['upward_rank_makespan'])
+        task_bins[tasks]['improvements'].append(r['performance_improvement_percent'])
     
     task_counts = sorted(task_bins.keys())
     avg_sum_tasks = [np.mean(task_bins[t]['sum']) for t in task_counts]
     avg_upward_tasks = [np.mean(task_bins[t]['upward']) for t in task_counts]
     
-    axes[1, 1].plot(task_counts, avg_sum_tasks, 'o-', label='SumRank', linewidth=2, markersize=6)
-    axes[1, 1].plot(task_counts, avg_upward_tasks, 's-', label='UpwardRank', linewidth=2, markersize=6)
+    # Calculate which algorithm is better for each task count
+    better_algorithm = []
+    colors = []
+    for t in task_counts:
+        avg_improvement = np.mean(task_bins[t]['improvements'])
+        if avg_improvement > 1.0:  # sum_rank significantly better
+            better_algorithm.append('sum_rank')
+            colors.append('#2E8B57')  # green
+        elif avg_improvement < -1.0:  # upward_rank significantly better
+            better_algorithm.append('upward_rank')
+            colors.append('#CD5C5C')  # red
+        else:  # roughly equal
+            better_algorithm.append('equal')
+            colors.append('#808080')  # gray
+    
+    # Plot lines with background colors to show winner
+    for i, (t, color) in enumerate(zip(task_counts, colors)):
+        if i < len(task_counts) - 1:
+            next_t = task_counts[i + 1]
+            axes[1, 1].axvspan(t - 0.5, next_t - 0.5, alpha=0.2, color=color)
+    
+    axes[1, 1].plot(task_counts, avg_sum_tasks, 'o-', label='SumRank', linewidth=3, markersize=8, color='#2E8B57')
+    axes[1, 1].plot(task_counts, avg_upward_tasks, 's-', label='UpwardRank', linewidth=3, markersize=8, color='#CD5C5C')
     axes[1, 1].set_xlabel('Number of Tasks (Nodes)')
     axes[1, 1].set_ylabel('Average Makespan')
-    axes[1, 1].set_title('Average Makespan by Number of Tasks')
+    axes[1, 1].set_title('Makespan by Tasks (Green=SumRank Better, Red=UpwardRank Better)')
     axes[1, 1].legend()
     axes[1, 1].grid(True, alpha=0.3)
     
-    # 6. NEW: Makespan by Number of Edges (proxy for branching factor)
+    # Add text annotations for significant differences
+    for i, t in enumerate(task_counts):
+        avg_improvement = np.mean(task_bins[t]['improvements'])
+        if abs(avg_improvement) > 2.0:  # Only show significant differences
+            winner = "SumRank" if avg_improvement > 0 else "UpwardRank"
+            axes[1, 1].annotate(f'{winner}\n+{abs(avg_improvement):.1f}%', 
+                               xy=(t, max(avg_sum_tasks[i], avg_upward_tasks[i])),
+                               xytext=(t, max(avg_sum_tasks[i], avg_upward_tasks[i]) + 0.3),
+                               ha='center', fontsize=8, fontweight='bold',
+                               bbox=dict(boxstyle='round,pad=0.3', facecolor=colors[i], alpha=0.7))
+    
+    # 6. NEW: Makespan by Number of Edges (proxy for branching factor) - Enhanced
     edge_bins = {}
     for r in results:
         edges = r['graph_size_edges']
         if edges not in edge_bins:
-            edge_bins[edges] = {'sum': [], 'upward': []}
+            edge_bins[edges] = {'sum': [], 'upward': [], 'improvements': []}
         edge_bins[edges]['sum'].append(r['sum_rank_makespan'])
         edge_bins[edges]['upward'].append(r['upward_rank_makespan'])
+        edge_bins[edges]['improvements'].append(r['performance_improvement_percent'])
     
     edge_counts = sorted(edge_bins.keys())
     avg_sum_edges = [np.mean(edge_bins[e]['sum']) for e in edge_counts]
     avg_upward_edges = [np.mean(edge_bins[e]['upward']) for e in edge_counts]
     
-    axes[1, 2].plot(edge_counts, avg_sum_edges, 'o-', label='SumRank', linewidth=2, markersize=6)
-    axes[1, 2].plot(edge_counts, avg_upward_edges, 's-', label='UpwardRank', linewidth=2, markersize=6)
+    # Calculate which algorithm is better for each edge count
+    edge_colors = []
+    for e in edge_counts:
+        avg_improvement = np.mean(edge_bins[e]['improvements'])
+        if avg_improvement > 1.0:  # sum_rank significantly better
+            edge_colors.append('#2E8B57')  # green
+        elif avg_improvement < -1.0:  # upward_rank significantly better
+            edge_colors.append('#CD5C5C')  # red
+        else:  # roughly equal
+            edge_colors.append('#808080')  # gray
+    
+    # Plot lines with background colors
+    for i, (e, color) in enumerate(zip(edge_counts, edge_colors)):
+        if i < len(edge_counts) - 1:
+            next_e = edge_counts[i + 1]
+            axes[1, 2].axvspan(e - 0.5, next_e - 0.5, alpha=0.2, color=color)
+    
+    axes[1, 2].plot(edge_counts, avg_sum_edges, 'o-', label='SumRank', linewidth=3, markersize=8, color='#2E8B57')
+    axes[1, 2].plot(edge_counts, avg_upward_edges, 's-', label='UpwardRank', linewidth=3, markersize=8, color='#CD5C5C')
     axes[1, 2].set_xlabel('Number of Edges (Branching Complexity)')
     axes[1, 2].set_ylabel('Average Makespan')
-    axes[1, 2].set_title('Average Makespan by Number of Edges')
+    axes[1, 2].set_title('Makespan by Edges (Green=SumRank Better, Red=UpwardRank Better)')
     axes[1, 2].legend()
     axes[1, 2].grid(True, alpha=0.3)
+    
+    # Add text annotations for significant differences
+    for i, e in enumerate(edge_counts):
+        avg_improvement = np.mean(edge_bins[e]['improvements'])
+        if abs(avg_improvement) > 2.0:  # Only show significant differences
+            winner = "SumRank" if avg_improvement > 0 else "UpwardRank"
+            axes[1, 2].annotate(f'{winner}\n+{abs(avg_improvement):.1f}%', 
+                               xy=(e, max(avg_sum_edges[i], avg_upward_edges[i])),
+                               xytext=(e, max(avg_sum_edges[i], avg_upward_edges[i]) + 0.3),
+                               ha='center', fontsize=8, fontweight='bold',
+                               bbox=dict(boxstyle='round,pad=0.3', facecolor=edge_colors[i], alpha=0.7))
     
     plt.tight_layout()
     plt.savefig(output_dir / 'sumrank_analysis.png', dpi=300, bbox_inches='tight')
@@ -320,17 +382,380 @@ def plot_results(results: List[Dict]):
 
 
 
+def test_hybrid_alpha_values(num_trials: int = 20, alphas: List[float] = None) -> pd.DataFrame:
+    """Test different alpha values for hybrid ranking to find optimal sweet spot."""
+    if alphas is None:
+        alphas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    
+    results = []
+    
+    print(f"Testing {len(alphas)} alpha values with {num_trials} trials each...")
+    
+    for alpha in tqdm(alphas, desc="Testing alpha values"):
+        alpha_results = []
+        
+        for trial in range(num_trials):
+            # Generate problem instance
+            network, task_graph = get_problem_instance()
+            
+            # Test hybrid ranking with current alpha
+            original_upward_rank = HeftScheduler.schedule.__globals__['upward_rank']
+            HeftScheduler.schedule.__globals__['upward_rank'] = lambda n, t: hybrid_rank(n, t, alpha)
+            
+            scheduler = HeftScheduler()
+            schedule = scheduler.schedule(network, task_graph)
+            hybrid_makespan = schedule.makespan
+            
+            # Restore original
+            HeftScheduler.schedule.__globals__['upward_rank'] = original_upward_rank
+            
+            # Test baseline upward_rank for comparison
+            scheduler_upward = HeftScheduler()
+            schedule_upward = scheduler_upward.schedule(network, task_graph)
+            upward_makespan = schedule_upward.makespan
+            
+            # Calculate improvement
+            improvement = (upward_makespan - hybrid_makespan) / upward_makespan * 100
+            
+            alpha_results.append({
+                'trial': trial,
+                'alpha': alpha,
+                'hybrid_makespan': hybrid_makespan,
+                'upward_makespan': upward_makespan,
+                'improvement_percent': improvement
+            })
+        
+        # Calculate average performance for this alpha
+        avg_improvement = sum(r['improvement_percent'] for r in alpha_results) / len(alpha_results)
+        better_count = len([r for r in alpha_results if r['improvement_percent'] > 0])
+        worse_count = len([r for r in alpha_results if r['improvement_percent'] < 0])
+        
+        results.append({
+            'alpha': alpha,
+            'avg_improvement_percent': avg_improvement,
+            'better_trials': better_count,
+            'worse_trials': worse_count,
+            'equal_trials': num_trials - better_count - worse_count,
+            'win_rate_percent': (better_count / num_trials) * 100
+        })
+        
+        print(f"Alpha {alpha:.1f}: {avg_improvement:+.2f}% avg, {better_count}/{num_trials} better")
+    
+    return pd.DataFrame(results)
+
+def plot_alpha_analysis(df: pd.DataFrame):
+    """Plot the results of alpha value testing with enhanced readability."""
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('Hybrid Rank Alpha Value Analysis - Finding the Optimal Sweet Spot', fontsize=18, fontweight='bold')
+    
+    # Set better default styles
+    plt.rcParams.update({
+        'font.size': 12,
+        'axes.titlesize': 14,
+        'axes.labelsize': 12,
+        'xtick.labelsize': 11,
+        'ytick.labelsize': 11,
+        'legend.fontsize': 11,
+        'figure.titlesize': 16
+    })
+    
+    # 1. Average Improvement by Alpha - Enhanced
+    ax1 = axes[0, 0]
+    line = ax1.plot(df['alpha'], df['avg_improvement_percent'], 'o-', linewidth=3, markersize=10, 
+                   color='#2E8B57', markerfacecolor='#2E8B57', markeredgecolor='darkgreen', markeredgewidth=2)
+    ax1.axhline(0, color='red', linestyle='--', linewidth=2, alpha=0.8, label='No Improvement')
+    ax1.fill_between(df['alpha'], 0, df['avg_improvement_percent'], 
+                     where=(df['avg_improvement_percent'] >= 0), 
+                     alpha=0.3, color='green', interpolate=True, label='Improvement Zone')
+    ax1.fill_between(df['alpha'], 0, df['avg_improvement_percent'], 
+                     where=(df['avg_improvement_percent'] < 0), 
+                     alpha=0.3, color='red', interpolate=True, label='Worsening Zone')
+    
+    # Highlight optimal alpha
+    best_idx = df['avg_improvement_percent'].idxmax()
+    best_alpha = df.loc[best_idx, 'alpha']
+    best_improvement = df.loc[best_idx, 'avg_improvement_percent']
+    ax1.scatter([best_alpha], [best_improvement], color='gold', s=300, zorder=5, 
+               edgecolor='darkgreen', linewidth=3, label=f'OPTIMAL: Alpha={best_alpha:.1f}')
+    
+    # Add annotation for best point
+    ax1.annotate(f'Best: {best_improvement:+.2f}%\nWin Rate: {df.loc[best_idx, "win_rate_percent"]:.1f}%',
+                xy=(best_alpha, best_improvement), xytext=(best_alpha + 0.1, best_improvement + 1),
+                arrowprops=dict(arrowstyle='->', color='darkgreen', lw=2),
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='lightgreen', alpha=0.8),
+                fontsize=11, fontweight='bold')
+    
+    ax1.set_xlabel('Alpha Value\n(0.0 = Pure SumRank, 1.0 = Pure UpwardRank)', fontsize=12)
+    ax1.set_ylabel('Average Improvement vs UpwardRank (%)', fontsize=12)
+    ax1.set_title('Performance by Alpha Value', fontsize=14, fontweight='bold')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend(loc='best', fontsize=10)
+    
+    # 2. Win Rate by Alpha - Enhanced
+    ax2 = axes[0, 1]
+    bars = ax2.bar(df['alpha'], df['win_rate_percent'], width=0.08, 
+                   color=['#2E8B57' if wr >= 50 else '#CD5C5C' for wr in df['win_rate_percent']],
+                   alpha=0.8, edgecolor='black', linewidth=1)
+    ax2.axhline(50, color='blue', linestyle='--', linewidth=2, alpha=0.8, label='50% Baseline')
+    ax2.axhline(df.loc[best_idx, 'win_rate_percent'], color='gold', linestyle='-', linewidth=3, 
+                alpha=0.8, label=f'Best: {df.loc[best_idx, "win_rate_percent"]:.1f}%')
+    
+    # Add value labels on bars
+    for i, (alpha, win_rate) in enumerate(zip(df['alpha'], df['win_rate_percent'])):
+        if alpha == best_alpha:
+            ax2.text(alpha, win_rate + 2, f'{win_rate:.1f}%', ha='center', va='bottom', 
+                    fontweight='bold', color='darkgreen', fontsize=11)
+        else:
+            ax2.text(alpha, win_rate + 1, f'{win_rate:.1f}%', ha='center', va='bottom', fontsize=9)
+    
+    ax2.set_xlabel('Alpha Value\n(0.0 = Pure SumRank, 1.0 = Pure UpwardRank)', fontsize=12)
+    ax2.set_ylabel('Win Rate vs UpwardRank (%)', fontsize=12)
+    ax2.set_title('Win Rate by Alpha Value', fontsize=14, fontweight='bold')
+    ax2.grid(True, alpha=0.3, axis='y')
+    ax2.legend(loc='best', fontsize=10)
+    ax2.set_ylim(0, max(df['win_rate_percent']) + 10)
+    
+    # 3. Trial Distribution by Alpha - Enhanced
+    ax3 = axes[1, 0]
+    width = 0.08
+    x = df['alpha']
+    
+    bars1 = ax3.bar(x - width, df['better_trials'], width, label='Better', color='#2E8B57', alpha=0.8, edgecolor='black')
+    bars2 = ax3.bar(x, df['equal_trials'], width, label='Equal', color='#808080', alpha=0.8, edgecolor='black')
+    bars3 = ax3.bar(x + width, df['worse_trials'], width, label='Worse', color='#CD5C5C', alpha=0.8, edgecolor='black')
+    
+    # Highlight optimal alpha
+    best_idx = df['avg_improvement_percent'].idxmax()
+    best_alpha = df.loc[best_idx, 'alpha']
+    ax3.axvline(best_alpha, color='gold', linestyle='--', linewidth=3, alpha=0.8, label=f'Optimal Alpha={best_alpha:.1f}')
+    
+    ax3.set_xlabel('Alpha Value\n(0.0 = Pure SumRank, 1.0 = Pure UpwardRank)', fontsize=12)
+    ax3.set_ylabel('Number of Trials (out of 30)', fontsize=12)
+    ax3.set_title('Trial Outcome Distribution by Alpha', fontsize=14, fontweight='bold')
+    ax3.grid(True, alpha=0.3, axis='y')
+    ax3.legend(loc='best', fontsize=10)
+    ax3.set_xticks(df['alpha'])
+    
+    # 4. Performance Summary - Enhanced
+    ax4 = axes[1, 1]
+    ax4.axis('off')
+    
+    # Create enhanced summary text with better formatting
+    best_alpha = df.loc[df['avg_improvement_percent'].idxmax(), 'alpha']
+    best_improvement = df.loc[df['avg_improvement_percent'].idxmax(), 'avg_improvement_percent']
+    best_win_rate = df.loc[df['avg_improvement_percent'].idxmax(), 'win_rate_percent']
+    best_better = df.loc[df['avg_improvement_percent'].idxmax(), 'better_trials']
+    best_equal = df.loc[df['avg_improvement_percent'].idxmax(), 'equal_trials']
+    best_worse = df.loc[df['avg_improvement_percent'].idxmax(), 'worse_trials']
+    
+    # Determine recommendation
+    if best_alpha < 0.3:
+        recommendation = "Use SumRank-Heavy Approach"
+        rec_color = '#2E8B57'
+    elif best_alpha > 0.7:
+        recommendation = "Use UpwardRank-Heavy Approach"
+        rec_color = '#CD5C5C'
+    else:
+        recommendation = "Use Balanced Approach"
+        rec_color = '#4169E1'
+    
+    summary_text = f"""
+    {'='*50}
+    OPTIMAL ALPHA FOUND: {best_alpha:.1f}
+    {'='*50}
+    
+    PERFORMANCE METRICS:
+    Average Improvement: {best_improvement:+.2f}%
+    Win Rate: {best_win_rate:.1f}%
+    
+    TRIAL BREAKDOWN (30 trials):
+    Better:   {best_better:.0f} trials ({best_better/30*100:.1f}%)
+    Equal:    {best_equal:.0f} trials ({best_equal/30*100:.1f}%)
+    Worse:    {best_worse:.0f} trials ({best_worse/30*100:.1f}%)
+    
+    ALPHA INTERPRETATION:
+    0.0 = Pure SumRank (total work focus)
+    0.5 = Equal Balance
+    1.0 = Pure UpwardRank (critical path focus)
+    
+    {'='*50}
+    RECOMMENDATION:
+    {recommendation}
+    {'='*50}
+    """
+    
+    ax4.text(0.05, 0.95, summary_text, fontsize=11, 
+            verticalalignment='top', fontfamily='monospace',
+            bbox=dict(boxstyle='round,pad=0.02', facecolor='lightblue', alpha=0.3))
+    
+    # Add recommendation box
+    rec_text = f"RECOMMENDED:\n{recommendation}\nAlpha = {best_alpha:.1f}"
+    ax4.text(0.75, 0.5, rec_text, fontsize=14, fontweight='bold',
+            verticalalignment='center', horizontalalignment='center',
+            bbox=dict(boxstyle='round,pad=0.02', facecolor=rec_color, alpha=0.8, edgecolor='black', linewidth=2),
+            color='white')
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / 'hybrid_alpha_analysis.png', dpi=300, bbox_inches='tight', facecolor='white')
+    print(f"Saved enhanced alpha analysis plot to {output_dir / 'hybrid_alpha_analysis.png'}")
+    plt.close()
+
+def test_alpha_simple():
+    """
+    Simple alpha testing function - change the alpha value inside this function.
+    
+    Just modify the alpha variable below and run this function to test different values.
+    """
+    # ===== CHANGE THIS ALPHA VALUE =====
+    alpha = 0.1  # Modify this value (0.0 = pure sum_rank, 1.0 = pure upward_rank)
+    # ====================================
+    
+    num_trials = 10
+    print(f"\n=== Testing Alpha {alpha:.1f} ===")
+    print(f"Running {num_trials} trials...")
+    
+    results = []
+    
+    for trial in range(num_trials):
+        # Generate problem instance
+        network, task_graph = get_problem_instance()
+        
+        # Test hybrid ranking with specified alpha
+        original_upward_rank = HeftScheduler.schedule.__globals__['upward_rank']
+        HeftScheduler.schedule.__globals__['upward_rank'] = lambda n, t: hybrid_rank(n, t, alpha)
+        
+        scheduler = HeftScheduler()
+        schedule = scheduler.schedule(network, task_graph)
+        hybrid_makespan = schedule.makespan
+        
+        # Restore original
+        HeftScheduler.schedule.__globals__['upward_rank'] = original_upward_rank
+        
+        # Test baseline upward_rank for comparison
+        scheduler_upward = HeftScheduler()
+        schedule_upward = scheduler_upward.schedule(network, task_graph)
+        upward_makespan = schedule_upward.makespan
+        
+        # Calculate improvement
+        improvement = (upward_makespan - hybrid_makespan) / upward_makespan * 100
+        
+        result = {
+            'trial': trial + 1,
+            'alpha': alpha,
+            'hybrid_makespan': hybrid_makespan,
+            'upward_makespan': upward_makespan,
+            'improvement_percent': improvement,
+            'num_tasks': len(task_graph.graph.nodes),
+            'num_edges': len(task_graph.graph.edges),
+            'task_edge_ratio': len(task_graph.graph.nodes) / len(task_graph.graph.edges) if len(task_graph.graph.edges) > 0 else 0
+        }
+        
+        results.append(result)
+        
+        status = "BETTER" if improvement > 0 else "WORSE" if improvement < 0 else "EQUAL"
+        print(f"Trial {trial+1:2d}: {status} | Hybrid: {hybrid_makespan:7.3f} | Upward: {upward_makespan:7.3f} | Diff: {improvement:+6.2f}%")
+    
+    # Calculate summary
+    improvements = [r['improvement_percent'] for r in results]
+    better_count = len([r for r in results if r['improvement_percent'] > 0])
+    worse_count = len([r for r in results if r['improvement_percent'] < 0])
+    equal_count = len([r for r in results if r['improvement_percent'] == 0])
+    
+    avg_improvement = sum(improvements) / len(improvements)
+    
+    print(f"\n--- Alpha {alpha:.1f} Summary ---")
+    print(f"Average Improvement: {avg_improvement:+.2f}%")
+    print(f"Win Rate: {better_count/num_trials*100:.1f}% ({better_count}/{num_trials})")
+    print(f"Trial Breakdown: {better_count} better, {equal_count} equal, {worse_count} worse")
+    
+    # Performance assessment
+    if avg_improvement > 1.0:
+        assessment = "EXCELLENT - Significant improvement"
+    elif avg_improvement > 0.5:
+        assessment = "GOOD - Noticeable improvement"
+    elif avg_improvement > 0:
+        assessment = "SLIGHT - Minor improvement"
+    elif avg_improvement > -0.5:
+        assessment = "NEUTRAL - Similar performance"
+    else:
+        assessment = "POOR - Performance degradation"
+    
+    print(f"Assessment: {assessment}")
+    
+    # Save results to CSV
+    csv_filename = output_dir / f'alpha_{alpha:.1f}_results.csv'
+    readable_filename = output_dir / f'alpha_{alpha:.1f}_results_readable.csv'
+    
+    # Save detailed CSV
+    df = pd.DataFrame(results)
+    df.to_csv(csv_filename, index=False)
+    print(f"Detailed results saved to {csv_filename}")
+    
+    # Create readable format
+    with open(readable_filename, 'w') as f:
+        f.write(f"Alpha {alpha:.1f} Test Results\n")
+        f.write(f"{'='*50}\n")
+        f.write(f"Average Improvement: {avg_improvement:+.2f}%\n")
+        f.write(f"Win Rate: {better_count/num_trials*100:.1f}% ({better_count}/{num_trials})\n")
+        f.write(f"Assessment: {assessment}\n")
+        f.write(f"\nDetailed Results:\n")
+        f.write(f"{'='*50}\n")
+        
+        for result in results:
+            status = "BETTER" if result['improvement_percent'] > 0 else "WORSE" if result['improvement_percent'] < 0 else "EQUAL"
+            f.write(f"\nTrial {result['trial']}:\n")
+            f.write(f"  Status: {status}\n")
+            f.write(f"  Graph: {result['num_tasks']} tasks, {result['num_edges']} edges (ratio: {result['task_edge_ratio']:.2f})\n")
+            f.write(f"  Hybrid Makespan: {result['hybrid_makespan']:.3f}\n")
+            f.write(f"  Upward Makespan: {result['upward_makespan']:.3f}\n")
+            f.write(f"  Improvement: {result['improvement_percent']:+.2f}%\n")
+        
+        f.write(f"\n{'='*50}\n")
+        f.write(f"Summary Statistics:\n")
+        f.write(f"Total Trials: {num_trials}\n")
+        f.write(f"Better: {better_count} ({better_count/num_trials*100:.1f}%)\n")
+        f.write(f"Equal: {equal_count} ({equal_count/num_trials*100:.1f}%)\n")
+        f.write(f"Worse: {worse_count} ({worse_count/num_trials*100:.1f}%)\n")
+        f.write(f"Average Improvement: {avg_improvement:+.2f}%\n")
+        f.write(f"Max Improvement: {max(improvements):+.2f}%\n")
+        f.write(f"Min Improvement: {min(improvements):+.2f}%\n")
+    
+    print(f"Readable results saved to {readable_filename}")
+    
+    return {
+        'alpha': alpha,
+        'avg_improvement': avg_improvement,
+        'win_rate': better_count/num_trials*100,
+        'better_trials': better_count,
+        'worse_trials': worse_count,
+        'equal_trials': equal_count
+    }
+
+def analyze_hybrid_sweet_spot():
+    """Run complete analysis to find optimal hybrid alpha."""
+    print("=== Finding Hybrid Rank Sweet Spot ===")
+    
+    # Test alpha values
+    results_df = test_hybrid_alpha_values(num_trials=30, alphas=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+    
+    # Save results
+    results_df.to_csv(output_dir / 'hybrid_alpha_results.csv', index=False)
+    print(f"Alpha results saved to {output_dir / 'hybrid_alpha_results.csv'}")
+    
+    # Plot analysis
+    plot_alpha_analysis(results_df)
+    
+    # Print summary
+    best_row = results_df.loc[results_df['avg_improvement_percent'].idxmax()]
+    print(f"\n=== OPTIMAL ALPHA FOUND ===")
+    print(f"Best Alpha: {best_row['alpha']:.1f}")
+    print(f"Average Improvement: {best_row['avg_improvement_percent']:+.2f}%")
+    print(f"Win Rate: {best_row['win_rate_percent']:.1f}%")
+    print(f"Better/Equal/Worse: {best_row['better_trials']}/{best_row['equal_trials']}/{best_row['worse_trials']}")
+    
+    return results_df
+
 def visualize_schedules(results: List[Dict], num_examples: int = 5):
-    if not results:
-        print("No results to visualize!")
-        return
-    
-    print(f"\n=== Creating Chart Visualizations ===")
-    savedir = Path(__file__).parent / 'outputs'
-    savedir.mkdir(exist_ok=True)
-    
-    better_examples = [r for r in results if r['improvement'] and r['improvement'] > 0][:num_examples]
-    worse_examples = [r for r in results if r['improvement'] and r['improvement'] < 0][:num_examples]
     
     if not better_examples and not worse_examples:
         print("No significant performance differences found for visualization")
@@ -464,7 +889,7 @@ def main():
     print("Starting sum_rank vs upward_rank comparison...")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--command", type=str, default="run", choices=["run", "analyze", "visualize_schedules"])
+    parser.add_argument("--command", type=str, default="run", choices=["run", "analyze", "visualize_schedules", "hybrid_analysis", "simple_alpha"])
     args = parser.parse_args()
     
     results = None
@@ -489,6 +914,14 @@ def main():
         results_dict = results.to_dict('records')
         print("\nCreating chart visualizations...")
         visualize_schedules(results_dict, num_examples=2)
+    
+    # Hybrid analysis to find optimal alpha
+    if args.command == "hybrid_analysis":
+        analyze_hybrid_sweet_spot()
+    
+    # Simple alpha testing
+    if args.command == "simple_alpha":
+        test_alpha_simple()
     
     print("\nDone!")
 
