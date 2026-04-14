@@ -607,7 +607,7 @@ def test_alpha_simple():
     Just modify the alpha variable below and run this function to test different values.
     """
     # ===== CHANGE THIS ALPHA VALUE =====
-    alpha = 0.1  # Modify this value (0.0 = pure sum_rank, 1.0 = pure upward_rank)
+    alpha = 0.2  # Modify this value (0.0 = pure sum_rank, 1.0 = pure upward_rank)
     # ====================================
     
     num_trials = 10
