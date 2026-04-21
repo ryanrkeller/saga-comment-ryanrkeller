@@ -382,23 +382,25 @@ def plot_results(results: List[Dict]):
 
 
 
-def test_hybrid_alpha_values(num_trials: int = 20, alphas: List[float] = None) -> pd.DataFrame:
-    """Test different alpha values for hybrid ranking to find optimal sweet spot."""
+def test_hybrid_alpha_values(num_trials: int = 30, alphas: List[float] = None):
+    """Test different alpha values for hybrid ranking."""
     if alphas is None:
         alphas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     
     results = []
+    all_results = []  # Initialize to store detailed results
     
-    print(f"Testing {len(alphas)} alpha values with {num_trials} trials each...")
-    
-    for alpha in tqdm(alphas, desc="Testing alpha values"):
+    print("Testing alpha values: ", end="")
+    for alpha in alphas:
+        print(f"{alpha:.1f} ", end="", flush=True)
+        
         alpha_results = []
         
         for trial in range(num_trials):
             # Generate problem instance
             network, task_graph = get_problem_instance()
             
-            # Test hybrid ranking with current alpha
+            # Test hybrid ranking with specified alpha
             original_upward_rank = HeftScheduler.schedule.__globals__['upward_rank']
             HeftScheduler.schedule.__globals__['upward_rank'] = lambda n, t: hybrid_rank(n, t, alpha)
             
@@ -440,10 +442,13 @@ def test_hybrid_alpha_values(num_trials: int = 20, alphas: List[float] = None) -
         })
         
         print(f"Alpha {alpha:.1f}: {avg_improvement:+.2f}% avg, {better_count}/{num_trials} better")
+        
+        # Store detailed results for plotting
+        all_results.extend(alpha_results)
     
-    return pd.DataFrame(results)
+    return pd.DataFrame(results), all_results
 
-def plot_alpha_analysis(df: pd.DataFrame):
+def plot_alpha_analysis(df: pd.DataFrame, all_alpha_results: List[Dict]):
     """Plot the results of alpha value testing with enhanced readability."""
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.suptitle('Hybrid Rank Alpha Value Analysis - Finding the Optimal Sweet Spot', fontsize=18, fontweight='bold')
@@ -459,39 +464,54 @@ def plot_alpha_analysis(df: pd.DataFrame):
         'figure.titlesize': 16
     })
     
-    # 1. Average Improvement by Alpha - Enhanced
+    # 1. Average Makespan Comparison by Alpha
     ax1 = axes[0, 0]
-    line = ax1.plot(df['alpha'], df['avg_improvement_percent'], 'o-', linewidth=3, markersize=10, 
-                   color='#2E8B57', markerfacecolor='#2E8B57', markeredgecolor='darkgreen', markeredgewidth=2)
-    ax1.axhline(0, color='red', linestyle='--', linewidth=2, alpha=0.8, label='No Improvement')
-    ax1.fill_between(df['alpha'], 0, df['avg_improvement_percent'], 
-                     where=(df['avg_improvement_percent'] >= 0), 
-                     alpha=0.3, color='green', interpolate=True, label='Improvement Zone')
-    ax1.fill_between(df['alpha'], 0, df['avg_improvement_percent'], 
-                     where=(df['avg_improvement_percent'] < 0), 
-                     alpha=0.3, color='red', interpolate=True, label='Worsening Zone')
     
-    # Highlight optimal alpha
-    best_idx = df['avg_improvement_percent'].idxmax()
-    best_alpha = df.loc[best_idx, 'alpha']
-    best_improvement = df.loc[best_idx, 'avg_improvement_percent']
-    ax1.scatter([best_alpha], [best_improvement], color='gold', s=300, zorder=5, 
+    # Calculate average makespans for each alpha
+    avg_hybrid_makespan = []
+    avg_upward_makespan = []
+    
+    for alpha in sorted(df['alpha'].unique()):
+        alpha_data = [r for r in all_alpha_results if r['alpha'] == alpha]
+        avg_hybrid = sum(r['hybrid_makespan'] for r in alpha_data) / len(alpha_data)
+        avg_upward = sum(r['upward_makespan'] for r in alpha_data) / len(alpha_data)
+        avg_hybrid_makespan.append(avg_hybrid)
+        avg_upward_makespan.append(avg_upward)
+    
+    alphas_sorted = sorted(df['alpha'].unique())
+    
+    # Plot both makespan lines
+    line1 = ax1.plot(alphas_sorted, avg_hybrid_makespan, 'o-', linewidth=3, markersize=10, 
+                     color='#2E8B57', markerfacecolor='#2E8B57', markeredgecolor='darkgreen', 
+                     markeredgewidth=2, label='Hybrid Makespan')
+    line2 = ax1.plot(alphas_sorted, avg_upward_makespan, 's-', linewidth=3, markersize=10, 
+                     color='#DC143C', markerfacecolor='#DC143C', markeredgecolor='darkred', 
+                     markeredgewidth=2, label='UpwardRank Makespan')
+    
+    # Highlight optimal alpha (minimum makespan difference)
+    makespan_diffs = [h - u for h, u in zip(avg_hybrid_makespan, avg_upward_makespan)]
+    best_idx = makespan_diffs.index(min(makespan_diffs))
+    best_alpha = alphas_sorted[best_idx]
+    
+    ax1.scatter([best_alpha], [avg_hybrid_makespan[best_idx]], color='gold', s=300, zorder=5, 
                edgecolor='darkgreen', linewidth=3, label=f'OPTIMAL: Alpha={best_alpha:.1f}')
     
-    # Add annotation for best point
-    ax1.annotate(f'Best: {best_improvement:+.2f}%\nWin Rate: {df.loc[best_idx, "win_rate_percent"]:.1f}%',
-                xy=(best_alpha, best_improvement), xytext=(best_alpha + 0.1, best_improvement + 1),
+    # Add makespan difference annotation
+    diff_text = f'Best Alpha: {best_alpha:.1f}\nDiff: {makespan_diffs[best_idx]:+.3f}'
+    ax1.annotate(diff_text,
+                xy=(best_alpha, avg_hybrid_makespan[best_idx]), 
+                xytext=(best_alpha + 0.1, avg_hybrid_makespan[best_idx] + 0.5),
                 arrowprops=dict(arrowstyle='->', color='darkgreen', lw=2),
                 bbox=dict(boxstyle='round,pad=0.5', facecolor='lightgreen', alpha=0.8),
                 fontsize=11, fontweight='bold')
     
     ax1.set_xlabel('Alpha Value\n(0.0 = Pure SumRank, 1.0 = Pure UpwardRank)', fontsize=12)
-    ax1.set_ylabel('Average Improvement vs UpwardRank (%)', fontsize=12)
-    ax1.set_title('Performance by Alpha Value', fontsize=14, fontweight='bold')
+    ax1.set_ylabel('Average Makespan', fontsize=12)
+    ax1.set_title('Makespan Comparison: Hybrid vs UpwardRank', fontsize=14, fontweight='bold')
     ax1.grid(True, alpha=0.3)
     ax1.legend(loc='best', fontsize=10)
     
-    # 2. Win Rate by Alpha - Enhanced
+    # 2. Makespan Win Rate by Alpha
     ax2 = axes[0, 1]
     bars = ax2.bar(df['alpha'], df['win_rate_percent'], width=0.08, 
                    color=['#2E8B57' if wr >= 50 else '#CD5C5C' for wr in df['win_rate_percent']],
@@ -515,14 +535,32 @@ def plot_alpha_analysis(df: pd.DataFrame):
     ax2.legend(loc='best', fontsize=10)
     ax2.set_ylim(0, max(df['win_rate_percent']) + 10)
     
-    # 3. Trial Distribution by Alpha - Enhanced
+    # 3. Trial Distribution by Alpha - Side-by-Side (Worse, Equal, Better)
     ax3 = axes[1, 0]
-    width = 0.08
+    width = 0.025  # Narrower width for 3 bars
     x = df['alpha']
     
-    bars1 = ax3.bar(x - width, df['better_trials'], width, label='Better', color='#2E8B57', alpha=0.8, edgecolor='black')
+    # Side-by-side in order: Worse (left), Equal (middle), Better (right)
+    bars1 = ax3.bar(x - width, df['worse_trials'], width, label='Worse', color='#CD5C5C', alpha=0.8, edgecolor='black')
     bars2 = ax3.bar(x, df['equal_trials'], width, label='Equal', color='#808080', alpha=0.8, edgecolor='black')
-    bars3 = ax3.bar(x + width, df['worse_trials'], width, label='Worse', color='#CD5C5C', alpha=0.8, edgecolor='black')
+    bars3 = ax3.bar(x + width, df['better_trials'], width, label='Better', color='#2E8B57', alpha=0.8, edgecolor='black')
+    
+    # Add value labels on top of each bar
+    for i, alpha in enumerate(df['alpha']):
+        # Worse (left)
+        if df['worse_trials'].iloc[i] > 0:
+            ax3.text(alpha - width, df['worse_trials'].iloc[i] + 0.5, 
+                    f'{df["worse_trials"].iloc[i]:.0f}', ha='center', va='bottom', fontweight='bold', color='#CD5C5C', fontsize=9)
+        
+        # Equal (middle)
+        if df['equal_trials'].iloc[i] > 0:
+            ax3.text(alpha, df['equal_trials'].iloc[i] + 0.5, 
+                    f'{df["equal_trials"].iloc[i]:.0f}', ha='center', va='bottom', fontweight='bold', color='#808080', fontsize=9)
+        
+        # Better (right)
+        if df['better_trials'].iloc[i] > 0:
+            ax3.text(alpha + width, df['better_trials'].iloc[i] + 0.5, 
+                    f'{df["better_trials"].iloc[i]:.0f}', ha='center', va='bottom', fontweight='bold', color='#2E8B57', fontsize=9)
     
     # Highlight optimal alpha
     best_idx = df['avg_improvement_percent'].idxmax()
@@ -736,14 +774,14 @@ def analyze_hybrid_sweet_spot():
     print("=== Finding Hybrid Rank Sweet Spot ===")
     
     # Test alpha values
-    results_df = test_hybrid_alpha_values(num_trials=30, alphas=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+    results_df, all_results = test_hybrid_alpha_values(num_trials=30, alphas=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
     
     # Save results
     results_df.to_csv(output_dir / 'hybrid_alpha_results.csv', index=False)
     print(f"Alpha results saved to {output_dir / 'hybrid_alpha_results.csv'}")
     
     # Plot analysis
-    plot_alpha_analysis(results_df)
+    plot_alpha_analysis(results_df, all_results)
     
     # Print summary
     best_row = results_df.loc[results_df['avg_improvement_percent'].idxmax()]

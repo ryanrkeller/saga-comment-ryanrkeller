@@ -1,88 +1,88 @@
 Alpha 0.1 Test Results
 ==================================================
-Average Improvement: +0.95%
-Win Rate: 10.0% (1/10)
-Assessment: GOOD - Noticeable improvement
+Average Improvement: -5.04%
+Win Rate: 0.0% (0/10)
+Assessment: POOR - Performance degradation
 
 Detailed Results:
 ==================================================
 
 Trial 1:
-  Status: EQUAL
-  Graph: 5 tasks, 6 edges (ratio: 0.83)
-  Hybrid Makespan: 4.293
-  Upward Makespan: 4.293
-  Improvement: +0.00%
+  Status: WORSE
+  Graph: 14 tasks, 21 edges (ratio: 0.67)
+  Hybrid Makespan: 7.567
+  Upward Makespan: 7.204
+  Improvement: -5.03%
 
 Trial 2:
-  Status: EQUAL
+  Status: WORSE
   Graph: 8 tasks, 10 edges (ratio: 0.80)
-  Hybrid Makespan: 6.104
-  Upward Makespan: 6.104
-  Improvement: +0.00%
+  Hybrid Makespan: 4.633
+  Upward Makespan: 3.999
+  Improvement: -15.86%
 
 Trial 3:
   Status: EQUAL
-  Graph: 4 tasks, 4 edges (ratio: 1.00)
-  Hybrid Makespan: 2.270
-  Upward Makespan: 2.270
+  Graph: 5 tasks, 6 edges (ratio: 0.83)
+  Hybrid Makespan: 3.846
+  Upward Makespan: 3.846
   Improvement: +0.00%
 
 Trial 4:
   Status: EQUAL
-  Graph: 4 tasks, 4 edges (ratio: 1.00)
-  Hybrid Makespan: 4.489
-  Upward Makespan: 4.489
+  Graph: 5 tasks, 6 edges (ratio: 0.83)
+  Hybrid Makespan: 4.899
+  Upward Makespan: 4.899
   Improvement: +0.00%
 
 Trial 5:
   Status: EQUAL
   Graph: 5 tasks, 6 edges (ratio: 0.83)
-  Hybrid Makespan: 2.894
-  Upward Makespan: 2.894
+  Hybrid Makespan: 3.986
+  Upward Makespan: 3.986
   Improvement: +0.00%
 
 Trial 6:
-  Status: EQUAL
-  Graph: 8 tasks, 10 edges (ratio: 0.80)
-  Hybrid Makespan: 6.028
-  Upward Makespan: 6.028
-  Improvement: +0.00%
+  Status: WORSE
+  Graph: 14 tasks, 21 edges (ratio: 0.67)
+  Hybrid Makespan: 11.057
+  Upward Makespan: 10.397
+  Improvement: -6.35%
 
 Trial 7:
-  Status: BETTER
-  Graph: 5 tasks, 6 edges (ratio: 0.83)
-  Hybrid Makespan: 2.621
-  Upward Makespan: 2.897
-  Improvement: +9.51%
+  Status: WORSE
+  Graph: 8 tasks, 10 edges (ratio: 0.80)
+  Hybrid Makespan: 5.962
+  Upward Makespan: 5.544
+  Improvement: -7.54%
 
 Trial 8:
-  Status: EQUAL
-  Graph: 5 tasks, 6 edges (ratio: 0.83)
-  Hybrid Makespan: 1.624
-  Upward Makespan: 1.624
-  Improvement: +0.00%
+  Status: WORSE
+  Graph: 14 tasks, 21 edges (ratio: 0.67)
+  Hybrid Makespan: 10.375
+  Upward Makespan: 10.289
+  Improvement: -0.83%
 
 Trial 9:
-  Status: EQUAL
-  Graph: 5 tasks, 6 edges (ratio: 0.83)
-  Hybrid Makespan: 3.199
-  Upward Makespan: 3.199
-  Improvement: +0.00%
+  Status: WORSE
+  Graph: 14 tasks, 21 edges (ratio: 0.67)
+  Hybrid Makespan: 5.466
+  Upward Makespan: 4.764
+  Improvement: -14.74%
 
 Trial 10:
   Status: EQUAL
   Graph: 5 tasks, 6 edges (ratio: 0.83)
-  Hybrid Makespan: 2.963
-  Upward Makespan: 2.963
+  Hybrid Makespan: 3.563
+  Upward Makespan: 3.563
   Improvement: +0.00%
 
 ==================================================
 Summary Statistics:
 Total Trials: 10
-Better: 1 (10.0%)
-Equal: 9 (90.0%)
-Worse: 0 (0.0%)
-Average Improvement: +0.95%
-Max Improvement: +9.51%
-Min Improvement: +0.00%
+Better: 0 (0.0%)
+Equal: 4 (40.0%)
+Worse: 6 (60.0%)
+Average Improvement: -5.04%
+Max Improvement: +0.00%
+Min Improvement: -15.86%
