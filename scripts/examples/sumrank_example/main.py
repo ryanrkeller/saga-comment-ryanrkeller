@@ -16,7 +16,7 @@ import pathlib
 
 from saga.utils.random_graphs import get_branching_dag, get_network
 from saga import Network, TaskGraph, Schedule
-from saga.schedulers.heft import HeftScheduler, upward_rank, sum_rank, hybrid_rank
+from saga.schedulers.heft import HeftScheduler, upward_rank, sum_rank, hybrid_rank, random_rank
 from saga.utils.draw import draw_gantt, draw_network, draw_task_graph
 
 thisdir = pathlib.Path(__file__).parent
@@ -638,6 +638,147 @@ def plot_alpha_analysis(df: pd.DataFrame, all_alpha_results: List[Dict]):
     print(f"Saved enhanced alpha analysis plot to {output_dir / 'hybrid_alpha_analysis.png'}")
     plt.close()
 
+def test_random_rank():
+    """Test random rank performance vs other methods."""
+    print("\n=== Testing Random Rank Performance ===")
+    
+    num_trials = 10
+    print(f"Running {num_trials} trials...")
+    
+    results = []
+    
+    for trial in range(num_trials):
+        # Generate problem instance
+        network, task_graph = get_problem_instance()
+        
+        # Test random rank - replace both upward_rank and heft_rank_sort
+        original_upward_rank = HeftScheduler.schedule.__globals__['upward_rank']
+        original_heft_rank_sort = HeftScheduler.schedule.__globals__['heft_rank_sort']
+        
+        # Create a custom heft_rank_sort that uses random_rank
+        def random_heft_rank_sort(network, task_graph):
+            # Use random_rank instead of upward_rank
+            ranks = random_rank(network, task_graph)
+            
+            # Get topological sort for tie-breaking
+            topological_sort = {
+                node.name: i for i, node in enumerate(reversed(task_graph.topological_sort()))
+            }
+            
+            # Sort by rank (descending) with topological tie-breaker
+            rank = {node: (ranks[node], topological_sort[node]) for node in ranks}
+            sorted_tasks = sorted(rank.items(), key=lambda x: (-x[1][0], x[1][1]))
+            
+            return [task[0] for task in sorted_tasks]
+        
+        # Replace both functions
+        HeftScheduler.schedule.__globals__['upward_rank'] = random_rank
+        HeftScheduler.schedule.__globals__['heft_rank_sort'] = random_heft_rank_sort
+        
+        scheduler = HeftScheduler()
+        schedule = scheduler.schedule(network, task_graph)
+        random_makespan = schedule.makespan
+        
+        # Restore original functions
+        HeftScheduler.schedule.__globals__['upward_rank'] = original_upward_rank
+        HeftScheduler.schedule.__globals__['heft_rank_sort'] = original_heft_rank_sort
+        
+        # Test baseline upward_rank for comparison
+        scheduler_upward = HeftScheduler()
+        schedule_upward = scheduler_upward.schedule(network, task_graph)
+        upward_makespan = schedule_upward.makespan
+        
+        # Calculate improvement
+        improvement = (upward_makespan - random_makespan) / upward_makespan * 100
+        
+        result = {
+            'trial': trial + 1,
+            'random_makespan': random_makespan,
+            'upward_makespan': upward_makespan,
+            'improvement_percent': improvement,
+            'num_tasks': len(task_graph.graph.nodes),
+            'num_edges': len(task_graph.graph.edges)
+        }
+        
+        results.append(result)
+        
+        status = "BETTER" if improvement > 0 else "WORSE" if improvement < 0 else "EQUAL"
+        print(f"Trial {trial+1:2d}: {status} | Random: {random_makespan:7.3f} | Upward: {upward_makespan:7.3f} | Diff: {improvement:+6.2f}%")
+    
+    # Calculate summary
+    improvements = [r['improvement_percent'] for r in results]
+    better_count = len([r for r in results if r['improvement_percent'] > 0])
+    worse_count = len([r for r in results if r['improvement_percent'] < 0])
+    equal_count = len([r for r in results if r['improvement_percent'] == 0])
+    
+    avg_improvement = sum(improvements) / len(improvements)
+    
+    print(f"\n--- Random Rank Summary ---")
+    print(f"Average Improvement: {avg_improvement:+.2f}%")
+    print(f"Win Rate: {better_count/num_trials*100:.1f}% ({better_count}/{num_trials})")
+    print(f"Trial Breakdown: {better_count} better, {equal_count} equal, {worse_count} worse")
+    
+    # Save results
+    csv_filename = output_dir / 'random_rank_results.csv'
+    readable_filename = output_dir / 'random_rank_results_readable.csv'
+    
+    # Save detailed CSV
+    df = pd.DataFrame(results)
+    df.to_csv(csv_filename, index=False)
+    print(f"Detailed results saved to {csv_filename}")
+    
+    # Create readable format
+    with open(readable_filename, 'w') as f:
+        f.write(f"Random Rank Test Results\n")
+        f.write(f"{'='*50}\n")
+        f.write(f"Average Improvement: {avg_improvement:+.2f}%\n")
+        f.write(f"Win Rate: {better_count/num_trials*100:.1f}% ({better_count}/{num_trials})\n")
+        
+        # Performance assessment
+        if avg_improvement > 1.0:
+            assessment = "EXCELLENT - Significant improvement"
+        elif avg_improvement > 0.5:
+            assessment = "GOOD - Noticeable improvement"
+        elif avg_improvement > 0:
+            assessment = "SLIGHT - Minor improvement"
+        elif avg_improvement > -0.5:
+            assessment = "NEUTRAL - Similar performance"
+        else:
+            assessment = "POOR - Performance degradation"
+        
+        f.write(f"Assessment: {assessment}\n")
+        f.write(f"\nDetailed Results:\n")
+        f.write(f"{'='*50}\n")
+        
+        for result in results:
+            status = "BETTER" if result['improvement_percent'] > 0 else "WORSE" if result['improvement_percent'] < 0 else "EQUAL"
+            f.write(f"\nTrial {result['trial']}:\n")
+            f.write(f"  Status: {status}\n")
+            f.write(f"  Graph: {result['num_tasks']} tasks, {result['num_edges']} edges\n")
+            f.write(f"  Random Makespan: {result['random_makespan']:.3f}\n")
+            f.write(f"  Upward Makespan: {result['upward_makespan']:.3f}\n")
+            f.write(f"  Improvement: {result['improvement_percent']:+.2f}%\n")
+        
+        f.write(f"\n{'='*50}\n")
+        f.write(f"Summary Statistics:\n")
+        f.write(f"Total Trials: {num_trials}\n")
+        f.write(f"Better: {better_count} ({better_count/num_trials*100:.1f}%)\n")
+        f.write(f"Equal: {equal_count} ({equal_count/num_trials*100:.1f}%)\n")
+        f.write(f"Worse: {worse_count} ({worse_count/num_trials*100:.1f}%)\n")
+        f.write(f"Average Improvement: {avg_improvement:+.2f}%\n")
+        f.write(f"Max Improvement: {max(improvements):+.2f}%\n")
+        f.write(f"Min Improvement: {min(improvements):+.2f}%\n")
+    
+    print(f"Readable results saved to {readable_filename}")
+    
+    return {
+        'avg_improvement': avg_improvement,
+        'win_rate': better_count/num_trials*100,
+        'better_trials': better_count,
+        'worse_trials': worse_count,
+        'equal_trials': equal_count
+    }
+
 def test_alpha_simple():
     """
     Simple alpha testing function - change the alpha value inside this function.
@@ -927,7 +1068,7 @@ def main():
     print("Starting sum_rank vs upward_rank comparison...")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--command", type=str, default="run", choices=["run", "analyze", "visualize_schedules", "hybrid_analysis", "simple_alpha"])
+    parser.add_argument("--command", type=str, default="run", choices=["run", "analyze", "visualize_schedules", "hybrid_analysis", "simple_alpha", "random_rank"])
     args = parser.parse_args()
     
     results = None
@@ -960,6 +1101,10 @@ def main():
     # Simple alpha testing
     if args.command == "simple_alpha":
         test_alpha_simple()
+    
+    # Random rank testing
+    if args.command == "random_rank":
+        test_random_rank()
     
     print("\nDone!")
 
