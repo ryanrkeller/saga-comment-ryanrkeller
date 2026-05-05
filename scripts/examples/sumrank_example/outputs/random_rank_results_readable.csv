@@ -1,8 +1,8 @@
 Random Rank Test Results
 ==================================================
-Average Improvement: +0.10%
+Average Improvement: -6.52%
 Win Rate: 20.0% (2/10)
-Assessment: SLIGHT - Minor improvement
+Assessment: POOR - Performance degradation
 
 Detailed Results:
 ==================================================
@@ -10,79 +10,79 @@ Detailed Results:
 Trial 1:
   Status: WORSE
   Graph: 14 tasks, 21 edges
-  Random Makespan: 9.631
-  Upward Makespan: 9.631
-  Improvement: -0.00%
+  Random Makespan: 8.780
+  Upward Makespan: 7.508
+  Improvement: -16.94%
 
 Trial 2:
-  Status: EQUAL
-  Graph: 4 tasks, 4 edges
-  Random Makespan: 3.788
-  Upward Makespan: 3.788
-  Improvement: +0.00%
+  Status: BETTER
+  Graph: 5 tasks, 6 edges
+  Random Makespan: 7.398
+  Upward Makespan: 7.429
+  Improvement: +0.41%
 
 Trial 3:
-  Status: EQUAL
-  Graph: 4 tasks, 4 edges
-  Random Makespan: 1.791
-  Upward Makespan: 1.791
-  Improvement: +0.00%
+  Status: WORSE
+  Graph: 14 tasks, 21 edges
+  Random Makespan: 6.100
+  Upward Makespan: 5.131
+  Improvement: -18.90%
 
 Trial 4:
-  Status: EQUAL
-  Graph: 5 tasks, 6 edges
-  Random Makespan: 2.412
-  Upward Makespan: 2.412
-  Improvement: +0.00%
+  Status: WORSE
+  Graph: 14 tasks, 21 edges
+  Random Makespan: 5.941
+  Upward Makespan: 5.249
+  Improvement: -13.18%
 
 Trial 5:
-  Status: BETTER
-  Graph: 8 tasks, 10 edges
-  Random Makespan: 6.932
-  Upward Makespan: 7.007
-  Improvement: +1.07%
+  Status: EQUAL
+  Graph: 4 tasks, 4 edges
+  Random Makespan: 2.400
+  Upward Makespan: 2.400
+  Improvement: +0.00%
 
 Trial 6:
   Status: EQUAL
-  Graph: 5 tasks, 6 edges
-  Random Makespan: 3.995
-  Upward Makespan: 3.995
+  Graph: 8 tasks, 10 edges
+  Random Makespan: 3.794
+  Upward Makespan: 3.794
   Improvement: +0.00%
 
 Trial 7:
-  Status: WORSE
-  Graph: 5 tasks, 6 edges
-  Random Makespan: 3.721
-  Upward Makespan: 3.439
-  Improvement: -8.18%
+  Status: BETTER
+  Graph: 8 tasks, 10 edges
+  Random Makespan: 4.228
+  Upward Makespan: 4.358
+  Improvement: +2.97%
 
 Trial 8:
   Status: WORSE
   Graph: 14 tasks, 21 edges
-  Random Makespan: 10.129
-  Upward Makespan: 10.043
-  Improvement: -0.85%
+  Random Makespan: 8.827
+  Upward Makespan: 7.671
+  Improvement: -15.07%
 
 Trial 9:
-  Status: BETTER
-  Graph: 8 tasks, 10 edges
-  Random Makespan: 3.358
-  Upward Makespan: 4.418
-  Improvement: +23.99%
+  Status: EQUAL
+  Graph: 5 tasks, 6 edges
+  Random Makespan: 2.123
+  Upward Makespan: 2.123
+  Improvement: +0.00%
 
 Trial 10:
   Status: WORSE
   Graph: 14 tasks, 21 edges
-  Random Makespan: 9.631
-  Upward Makespan: 8.376
-  Improvement: -14.98%
+  Random Makespan: 6.134
+  Upward Makespan: 5.868
+  Improvement: -4.53%
 
 ==================================================
 Summary Statistics:
 Total Trials: 10
 Better: 2 (20.0%)
-Equal: 4 (40.0%)
-Worse: 4 (40.0%)
-Average Improvement: +0.10%
-Max Improvement: +23.99%
-Min Improvement: -14.98%
+Equal: 3 (30.0%)
+Worse: 5 (50.0%)
+Average Improvement: -6.52%
+Max Improvement: +2.97%
+Min Improvement: -18.90%

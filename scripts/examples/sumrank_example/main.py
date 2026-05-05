@@ -638,12 +638,15 @@ def plot_alpha_analysis(df: pd.DataFrame, all_alpha_results: List[Dict]):
     print(f"Saved enhanced alpha analysis plot to {output_dir / 'hybrid_alpha_analysis.png'}")
     plt.close()
 
-def test_random_rank():
-    """Test random rank performance vs other methods."""
-    print("\n=== Testing Random Rank Performance ===")
+def test_random_rank(num_trials: int = 10, noise_factor: float = 0.01):
+    """Test random rank performance vs other methods.
     
-    num_trials = 10
-    print(f"Running {num_trials} trials...")
+    Args:
+        num_trials (int): Number of trials to run (default: 10)
+        noise_factor (float): Randomization intensity (default: 0.01 = 1%)
+    """
+    print(f"\n=== Testing Random Rank Performance ===")
+    print(f"Running {num_trials} trials with noise factor: {noise_factor*100:.1f}%...")
     
     results = []
     
@@ -655,10 +658,10 @@ def test_random_rank():
         original_upward_rank = HeftScheduler.schedule.__globals__['upward_rank']
         original_heft_rank_sort = HeftScheduler.schedule.__globals__['heft_rank_sort']
         
-        # Create a custom heft_rank_sort that uses random_rank
+        # Create a custom heft_rank_sort that uses random_rank with noise_factor
         def random_heft_rank_sort(network, task_graph):
-            # Use random_rank instead of upward_rank
-            ranks = random_rank(network, task_graph)
+            # Use random_rank with custom noise_factor instead of upward_rank
+            ranks = random_rank(network, task_graph, noise_factor)
             
             # Get topological sort for tie-breaking
             topological_sort = {
@@ -729,7 +732,7 @@ def test_random_rank():
     
     # Create readable format
     with open(readable_filename, 'w') as f:
-        f.write(f"Random Rank Test Results\n")
+        f.write(f"Random Rank Test Results (Noise Factor: {noise_factor*100:.1f}%)\n")
         f.write(f"{'='*50}\n")
         f.write(f"Average Improvement: {avg_improvement:+.2f}%\n")
         f.write(f"Win Rate: {better_count/num_trials*100:.1f}% ({better_count}/{num_trials})\n")
@@ -1069,6 +1072,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--command", type=str, default="run", choices=["run", "analyze", "visualize_schedules", "hybrid_analysis", "simple_alpha", "random_rank"])
+    parser.add_argument("--trials", type=int, default=10, help="Number of trials to run (default: 10)")
+    parser.add_argument("--noise", type=float, default=0.01, help="Randomization intensity (default: 0.01 = 1%%)")
     args = parser.parse_args()
     
     results = None
@@ -1104,7 +1109,7 @@ def main():
     
     # Random rank testing
     if args.command == "random_rank":
-        test_random_rank()
+        test_random_rank(num_trials=args.trials, noise_factor=args.noise)
     
     print("\nDone!")
 
